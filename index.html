@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0d0809" />
-    <title>Living Heart</title>
-    <meta name="description" content="An interactive, beating 3D human heart you can explore." />
+    <title>Atrium</title>
+    <meta name="description" content="Atrium: a living, beating 3D human heart you can explore." />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -15,12 +15,39 @@
     />
   </head>
   <body>
-    <canvas id="scene" aria-label="A softly beating light, placeholder for the heart"></canvas>
-    <main class="caption">
-      <h1>Living Heart</h1>
-      <p>The room is ready. The heart arrives in the next step.</p>
-      <p class="rate"><span id="bpm">60</span> beats a minute</p>
-    </main>
+    <canvas id="scene" aria-label="A 3D model of the human heart. Drag to turn it."></canvas>
+
+    <div id="loading" role="status">
+      <p>Gathering the heart</p>
+      <span id="loading-pct">0%</span>
+    </div>
+
+    <header class="title">
+      <h1>Atrium</h1>
+    </header>
+
+    <div id="label" aria-hidden="true">
+      <span id="label-name"></span>
+      <span id="label-kind"></span>
+    </div>
+
+    <p id="hint"></p>
+
+    <footer class="credits-wrap">
+      <button id="credits-toggle" type="button" aria-expanded="false" aria-controls="credits">Credits</button>
+      <div id="credits" hidden>
+        <p>
+          Heart and vessels: Human Reference Atlas 3D reference organs (HuBMAP), made from the
+          Visible Human Male, National Library of Medicine.
+          <a href="https://3d.nih.gov/entries/3DPX-021000" target="_blank" rel="noopener">Heart</a> and
+          <a href="https://3d.nih.gov/entries/3DPX-020997" target="_blank" rel="noopener">vasculature</a>,
+          <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.
+          Combined, trimmed, recentred and compressed for Atrium; colours added.
+        </p>
+        <p>Educational only. Not medical advice.</p>
+      </div>
+    </footer>
+
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

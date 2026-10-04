@@ -1,6 +1,6 @@
-# Living Heart
+# Atrium
 
-An interactive, beating 3D human heart for the browser. Educational only; not medical advice.
+A living, beating 3D human heart for the browser. Educational only; not medical advice.
 
 ## Run locally
 
