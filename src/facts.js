@@ -44,6 +44,9 @@ const PAPILLARY_FACT =
 const PAPILLARY_NOTE =
   'The atlas names these muscles but not which ventricle each sits in; Atrium assigns them by position. Textbooks describe three in the right ventricle (anterior, posterior, septal) and two in the left.';
 
+const CONDUCTION_NOTE =
+  'The conduction system is not part of the atlas model. Atrium draws it from the surrounding anatomy, so positions are estimates and the network is far simpler than the real one.';
+
 const PULM_VEIN_FACT =
   'The pulmonary veins are the only veins after birth that carry oxygen-rich blood, which is why they are red here. Most people have four, but the number varies; some have three or five.';
 
@@ -152,6 +155,48 @@ export const FACTS = {
     sources: ['openstax', 'hra'],
   },
 
+  sa_node: {
+    does: 'A small cluster of special cells in the wall of the right atrium, near where the superior vena cava enters. It starts every heartbeat.',
+    fact: 'Its cells slowly leak charge until they fire on their own, with no signal from the brain needed; nerves and hormones only speed it up or slow it down. In Atrium, watch it brighten slowly between beats, then flash as it fires.',
+    connects: ['right_atrium', 'superior_vena_cava', 'internodal_pathways', 'av_node'],
+    note: CONDUCTION_NOTE,
+    sources: ['openstax2'],
+  },
+  internodal_pathways: {
+    does: 'Carry the signal from the SA node across both atria and down to the AV node. One branch, Bachmann\u2019s bundle, crosses to the left atrium.',
+    fact: 'The spreading signal is what draws the small P wave on an ECG: a little bump, because the atria are thin and do not hold much muscle.',
+    connects: ['sa_node', 'av_node', 'right_atrium', 'left_atrium'],
+    note: 'Whether these are true separate pathways, or simply faster routes through ordinary atrial muscle, is still debated. ' + CONDUCTION_NOTE,
+    sources: ['openstax2'],
+  },
+  av_node: {
+    does: 'Sits low in the wall between the atria, near the opening of the coronary sinus. It is the normal gateway for the signal from the atria to the ventricles.',
+    fact: 'It deliberately holds the signal back for about a tenth of a second, so the atria can finish emptying before the ventricles squeeze. That pause is the flat stretch between the P wave and the QRS.',
+    connects: ['internodal_pathways', 'his_bundle', 'coronary_sinus', 'tricuspid_valve'],
+    note: CONDUCTION_NOTE,
+    sources: ['openstax2'],
+  },
+  his_bundle: {
+    does: 'Carries the signal from the AV node through the tough ring of tissue between atria and ventricles into the top of the septum.',
+    fact: 'That ring of fibrous tissue blocks electricity everywhere else, so this bundle is normally the only way through.',
+    connects: ['av_node', 'bundle_branches', 'interventricular_septum'],
+    note: CONDUCTION_NOTE,
+    sources: ['openstax2'],
+  },
+  bundle_branches: {
+    does: 'A left and a right branch run down either side of the septum toward the apex.',
+    fact: 'Because of them, the septum is the first part of the ventricles to be activated, and the apex follows before the base.',
+    connects: ['his_bundle', 'purkinje_fibres', 'interventricular_septum'],
+    note: CONDUCTION_NOTE,
+    sources: ['openstax2'],
+  },
+  purkinje_fibres: {
+    does: 'A network of fast-conducting fibres spread under the inner lining of both ventricles.',
+    fact: 'They carry the signal many times faster than ordinary heart muscle, so both ventricles are activated within about a tenth of a second. That speed is why the QRS is narrow, and its size reflects how much muscle the ventricles hold.',
+    connects: ['bundle_branches', 'left_ventricle', 'right_ventricle', 'papillary_anterolateral', 'papillary_anterior'],
+    note: CONDUCTION_NOTE,
+    sources: ['openstax2'],
+  },
   superior_vena_cava: {
     does: 'Brings oxygen-poor blood down into the right atrium.',
     fact: 'Everything above the diaphragm drains into it: the head, neck, arms and chest.',

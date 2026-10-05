@@ -98,6 +98,7 @@
 
     <section id="beat" aria-label="Heartbeat">
       <p class="beat-phase"><span class="phase-name"></span><span class="phase-sub"></span></p>
+      <canvas class="beat-ecg" aria-hidden="true"></canvas>
       <div class="beat-timeline" aria-hidden="true">
         <div class="beat-segments"></div>
         <span class="beat-dot"></span>
@@ -117,6 +118,7 @@
       </div>
       <div class="beat-extra">
         <button class="beat-flow" type="button" aria-pressed="false">Show blood flow</button>
+        <button class="beat-elec" type="button" aria-pressed="false">Show electrical signal</button>
         <span class="flow-key" aria-hidden="true"><i class="key-poor"></i>oxygen-poor<i class="key-rich"></i>oxygen-rich</span>
         <button class="beat-about" type="button" aria-expanded="false" aria-controls="beat-note">How true is this?</button>
       </div>
@@ -137,6 +139,11 @@
         Blood is drawn as glowing points that shine through the walls. It moves only when the valves in its path
         are open, so it gathers behind a shut valve. Speeds are not to scale: a real trip around the whole body
         takes about a minute. The lungs and body are not modelled; they appear as simple loops.
+      </p>
+      <p>
+        The ECG is a textbook-shaped trace generated from the beat's timing, not a recording; real ECGs differ
+        from person to person and from lead to lead. The atria also recover electrically, but that small wave is
+        hidden inside the QRS. The conduction system is drawn by Atrium, not taken from the atlas.
       </p>
     </div>
 

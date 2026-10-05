@@ -9,12 +9,13 @@ export const GROUPS = {
   valve: { label: 'Valve', plural: 'Valves' },
   papillary: { label: 'Papillary muscle', plural: 'Papillary muscles' },
   cords: { label: 'Tendinous cords', plural: 'Tendinous cords' },
+  conduction: { label: 'Conduction system', plural: 'Conduction system' },
   vessel: { label: 'Great vessel', plural: 'Great vessels' },
   coronaryArtery: { label: 'Coronary artery', plural: 'Coronary arteries' },
   cardiacVein: { label: 'Cardiac vein', plural: 'Cardiac veins' },
 };
 
-export const GROUP_ORDER = ['chamber', 'valve', 'wall', 'papillary', 'cords', 'vessel', 'coronaryArtery', 'cardiacVein'];
+export const GROUP_ORDER = ['chamber', 'valve', 'wall', 'papillary', 'cords', 'conduction', 'vessel', 'coronaryArtery', 'cardiacVein'];
 
 export const PARTS = {
   right_atrium: { name: 'Right atrium', group: 'chamber', blood: 'poor', aliases: ['RA'] },
@@ -34,6 +35,13 @@ export const PARTS = {
   papillary_anterolateral: { name: 'Anterolateral papillary muscle', side: 'left ventricle', group: 'papillary', inside: true },
   papillary_posteromedial: { name: 'Posteromedial papillary muscle', side: 'left ventricle', group: 'papillary', inside: true },
   chordae_tendineae: { name: 'Chordae tendineae', group: 'cords', inside: true, aliases: ['heart strings', 'cords', 'tendinous cords'] },
+
+  sa_node: { name: 'Sinoatrial (SA) node', group: 'conduction', inside: true, aliases: ['SA node', 'pacemaker', 'sinus node'] },
+  internodal_pathways: { name: 'Atrial pathways', group: 'conduction', inside: true, aliases: ['internodal', "Bachmann's bundle"] },
+  av_node: { name: 'Atrioventricular (AV) node', group: 'conduction', inside: true, aliases: ['AV node'] },
+  his_bundle: { name: 'Bundle of His', group: 'conduction', inside: true, aliases: ['AV bundle', 'His'] },
+  bundle_branches: { name: 'Bundle branches', group: 'conduction', inside: true, aliases: ['left bundle', 'right bundle'] },
+  purkinje_fibres: { name: 'Purkinje fibres', group: 'conduction', inside: true, aliases: ['Purkinje fibers'] },
 
   superior_vena_cava: { name: 'Superior vena cava', group: 'vessel', blood: 'poor', aliases: ['SVC'] },
   inferior_vena_cava: { name: 'Inferior vena cava', group: 'vessel', blood: 'poor', aliases: ['IVC'] },

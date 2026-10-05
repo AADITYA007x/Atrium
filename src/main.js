@@ -11,6 +11,7 @@ import { createBeat, measureHeart } from './beat.js';
 import { createDock } from './dock.js';
 import { buildValves } from './valves.js';
 import { createFlow } from './flow.js';
+import { buildConduction } from './elec.js';
 import './style.css';
 
 const canvas = document.getElementById('scene');
@@ -202,6 +203,8 @@ let meshes = [];
 let valveSet = null;
 let flow = null;
 let flowWanted = false;
+let elecWanted = false;
+let conduction = null;
 // While blood flow is shown, these walls turn see-through so the blood inside is visible
 const FLOW_SEE_THROUGH = ['chamber', 'wall', 'vessel'];
 const meshById = new Map();
@@ -224,7 +227,13 @@ function refreshFade() {
     let target = layerOpacity;
     if (m === selected) target = 1;
     else if (fadeOthers) target = Math.min(layerOpacity, 0.07);
-    else if (flowWanted && FLOW_SEE_THROUGH.includes(m.userData.part?.group)) target = Math.min(layerOpacity, 0.13);
+    else if ((flowWanted || elecWanted) && FLOW_SEE_THROUGH.includes(m.userData.part?.group)) {
+      target = Math.min(layerOpacity, flowWanted ? (elecWanted ? 0.2 : 0.13) : 0.4);
+    }
+    else if ((flowWanted || elecWanted) && ['valve', 'papillary', 'cords'].includes(m.userData.part?.group)) {
+      target = Math.min(layerOpacity, 0.45);
+    }
+    if (m.userData.part?.group === 'conduction' && !elecWanted && m !== selected) target = 0;
     m.userData.opacityTarget = target;
   }
 }
@@ -253,8 +262,16 @@ const dock = createDock(beat, {
     flow?.setOn(on);
     refreshFade();
   },
+  onElec: (on) => {
+    elecWanted = on;
+    refreshFade();
+    setTimeout(updateViewShiftTarget, 650);
+  },
 });
 const rootStyle = document.documentElement.style;
+dock.el.addEventListener('transitionend', (e) => {
+  if (e.target.classList?.contains('beat-ecg')) updateViewShiftTarget();
+});
 
 // Layers and Slice cards: one open at a time
 const tools = {
@@ -326,7 +343,8 @@ function select(id, { fly = false, fromList = false } = {}) {
   const mesh = meshById.get(id);
   if (!mesh) return;
   selected = mesh;
-  halo.attach(mesh.isMesh ? mesh : null);
+  halo.attach(mesh.isMesh && mesh.material.userData.invModel ? mesh : null);
+  if (mesh.userData.part?.group === 'conduction' && !elecWanted) dock.setElec(true);
   refreshGlow();
   refreshFade();
   panel.show(id);
@@ -379,6 +397,16 @@ loadHeart('/models/atrium-heart.glb', {
     meshById.set('chordae_tendineae', valveSet.chordae);
     flow = createFlow({ meshById, valveSet, scene, clipPlane });
     flow.setOn(flowWanted);
+
+    conduction = buildConduction({ meshById, valveSet, clipPlane });
+    for (const obj of conduction.objects) {
+      scene.add(obj);
+      meshes.push(obj);
+      meshById.set(obj.userData.partId, obj);
+      obj.userData.glowTarget = 0;
+      obj.userData.opacityTarget = 0;
+      obj.userData.noDepth = true;
+    }
     for (const mesh of [...valveSet.valves.map((v) => v.mesh), valveSet.chordae]) {
       mesh.userData.glowTarget = 0;
       mesh.userData.opacityTarget = 1;
@@ -513,7 +541,8 @@ renderer.setAnimationLoop(() => {
   valveSet?.update(info.av, info.sl);
   const simDt = beat.state.playing ? Math.min(dt, 0.1) / beat.state.slow : 0;
   flow?.update(simDt, info, camera, { top: 90, bottom: dock.el.getBoundingClientRect().top - 16 });
-  dock.update(info);
+  const elecInfo = conduction?.update(beat.state, elecWanted);
+  dock.update(info, elecInfo);
   rim.intensity = RIM_BASE * (1 + 0.45 * info.v + 0.2 * info.a);
   rootStyle.setProperty('--pulse', (0.35 + 0.65 * Math.max(info.v * 0.9, info.a * 0.5)).toFixed(3));
 
@@ -528,12 +557,12 @@ renderer.setAnimationLoop(() => {
     } else {
       mat.opacity = target;
     }
-    const see = mat.opacity < 0.999;
+    const see = m.userData.noDepth || mat.opacity < 0.999;
     if (mat.transparent !== see) {
       mat.transparent = see;
       mat.needsUpdate = true;
     }
-    mat.depthWrite = mat.opacity > 0.5;
+    if (!m.userData.noDepth) mat.depthWrite = mat.opacity > 0.5;
     m.visible = mat.opacity > 0.01 || target > 0;
   }
 

@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { PARTS } from './parts.js';
 import { beatUniforms } from './beat.js';
+import { elecUniforms, elecRegionFor } from './elec.js';
 
 const COLORS = {
   muscle: '#76232a',
@@ -97,7 +98,39 @@ vec3 atriumDeform(vec3 p, vec3 n) {
 }
 `;
 
+const ELEC_VERTEX_HEAD = /* glsl */ `
+uniform float uElecRegion;
+uniform vec3 uSA;
+uniform float uVA;
+uniform float uTQ;
+uniform float uF;
+uniform float uTTend;
+varying float vAct;
+varying float vRep;
+`;
+
+// When the electrical signal reaches this point, and when it recovers (seconds after the P wave starts)
+const ELEC_VERTEX_BODY = /* glsl */ `
+  float atriumH = dot(atriumW - uApex, uAxis) / uLen;
+  if (uElecRegion < -0.5) {
+    vAct = 99.0;
+    vRep = 99.0;
+  } else if (uElecRegion < 0.5) {
+    vAct = distance(atriumW, uSA) / uVA;
+    vRep = uTQ + 0.03;
+  } else {
+    float hh = clamp(atriumH, 0.0, 1.15);
+    vAct = uElecRegion > 1.5 ? uTQ + 0.004 + 0.025 * hh : uTQ + 0.02 + 0.06 * hh;
+    vRep = uTTend - 0.03 * uF - 0.08 * uF * hh;
+  }
+`;
+
 const FRAGMENT_HEAD = /* glsl */ `
+uniform float uElecOn;
+uniform float uElecTau;
+uniform vec3 uElecColor;
+varying float vAct;
+varying float vRep;
 uniform vec3 uCutColor;
 uniform float uSliceOn;
 uniform float uGlow;
@@ -148,6 +181,7 @@ export function materialFor(part, partId, clipPlane) {
 
   const material = new THREE.MeshPhysicalMaterial({ ...base, color: new THREE.Color(color) });
   const local = {
+    uElecRegion: { value: elecRegionFor(partId, part) },
     uCutColor: { value: new THREE.Color(cutColorFor(part)) },
     uGlow: { value: 0 },
     uSwell: { value: SWELL[partId] ?? 0 },
@@ -158,14 +192,15 @@ export function materialFor(part, partId, clipPlane) {
   material.userData.swell = local.uSwell;
 
   material.onBeforeCompile = (shader) => {
-    Object.assign(shader.uniforms, beatUniforms, local, { uSliceOn: sliceUniform, uGlowColor: glowColor });
+    Object.assign(shader.uniforms, beatUniforms, elecUniforms, local, { uSliceOn: sliceUniform, uGlowColor: glowColor });
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', `#include <common>\n${VERTEX_HEAD}`)
+      .replace('#include <common>', `#include <common>\n${VERTEX_HEAD}\n${ELEC_VERTEX_HEAD}`)
       .replace(
         '#include <begin_vertex>',
         `#include <begin_vertex>
         vec3 atriumW = (modelMatrix * vec4(transformed, 1.0)).xyz;
         vec3 atriumN = normalize(mat3(modelMatrix) * objectNormal);
+        ${ELEC_VERTEX_BODY}
         atriumW = atriumDeform(atriumW, atriumN);
         transformed = (uInvModel * vec4(atriumW, 1.0)).xyz;`,
       );
@@ -173,17 +208,23 @@ export function materialFor(part, partId, clipPlane) {
       .replace('#include <common>', `#include <common>\n${FRAGMENT_HEAD}`)
       .replace(
         '#include <color_fragment>',
-        '#include <color_fragment>\nif ( !gl_FrontFacing ) diffuseColor.rgb = mix( diffuseColor.rgb, uCutColor, uSliceOn );',
+        `#include <color_fragment>
+        if ( !gl_FrontFacing ) diffuseColor.rgb = mix( diffuseColor.rgb, uCutColor, uSliceOn );
+        float eD = uElecTau - vAct;
+        float eFront = exp(-0.5 * (eD / 0.012) * (eD / 0.012));
+        float ePlat = smoothstep(0.0, 0.03, eD) * (1.0 - smoothstep(-0.03, 0.0, uElecTau - vRep));
+        diffuseColor.a = max(diffuseColor.a, eFront * 0.6 * uElecOn);`,
       )
       .replace(
         '#include <emissivemap_fragment>',
         `#include <emissivemap_fragment>
         float atriumFres = 1.0 - abs(dot(normalize(normal), normalize(vViewPosition)));
         atriumFres = pow(atriumFres, 3.5);
-        totalEmissiveRadiance += uGlowColor * (atriumFres * 0.9 + 0.035) * uGlow;`,
+        totalEmissiveRadiance += uGlowColor * (atriumFres * 0.9 + 0.035) * uGlow;
+        totalEmissiveRadiance += uElecColor * (eFront * 1.6 + ePlat * 0.16) * uElecOn;`,
       );
   };
-  material.customProgramCacheKey = () => 'atrium-v4';
+  material.customProgramCacheKey = () => 'atrium-v6';
   return material;
 }
 
