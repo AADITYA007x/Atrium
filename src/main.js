@@ -9,6 +9,7 @@ import { createLayers } from './layers.js';
 import { createSlice } from './slice.js';
 import { createBeat, measureHeart } from './beat.js';
 import { createDock } from './dock.js';
+import { createSound } from './sound.js';
 import { buildValves } from './valves.js';
 import { createFlow } from './flow.js';
 import { buildConduction } from './elec.js';
@@ -256,6 +257,7 @@ const layers = createLayers({ onChange: () => refreshFade() });
 const beat = createBeat({ reduceMotion });
 const halo = createHalo(clipPlane);
 scene.add(halo.mesh);
+const sound = createSound();
 const dock = createDock(beat, {
   onFlow: (on) => {
     flowWanted = on;
@@ -537,7 +539,9 @@ renderer.setAnimationLoop(() => {
   const dt = clock.getDelta();
   const ease = reduceMotion ? 1 : 0.12;
 
+  const prevBeatT = beat.state.t;
   const info = beat.update(dt);
+  sound.update(prevBeatT, info.t, beat.state.times, beat.state.playing, beat.state.slow);
   valveSet?.update(info.av, info.sl);
   const simDt = beat.state.playing ? Math.min(dt, 0.1) / beat.state.slow : 0;
   flow?.update(simDt, info, camera, { top: 90, bottom: dock.el.getBoundingClientRect().top - 16 });

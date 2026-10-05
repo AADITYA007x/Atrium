@@ -105,6 +105,7 @@
       </div>
       <div class="beat-controls">
         <button class="beat-play" type="button"></button>
+        <button class="beat-sound" type="button" aria-pressed="false"></button>
         <label class="beat-field">
           <span>Speed</span>
           <input class="beat-speed" type="range" min="0" max="100" value="0" />
@@ -119,6 +120,7 @@
       <div class="beat-extra">
         <button class="beat-flow" type="button" aria-pressed="false">Show blood flow</button>
         <button class="beat-elec" type="button" aria-pressed="false">Show electrical signal</button>
+        <button class="beat-music" type="button" aria-pressed="false">Play music</button>
         <span class="flow-key" aria-hidden="true"><i class="key-poor"></i>oxygen-poor<i class="key-rich"></i>oxygen-rich</span>
         <button class="beat-about" type="button" aria-expanded="false" aria-controls="beat-note">How true is this?</button>
       </div>
@@ -144,6 +146,13 @@
         The ECG is a textbook-shaped trace generated from the beat's timing, not a recording; real ECGs differ
         from person to person and from lead to lead. The atria also recover electrically, but that small wave is
         hidden inside the QRS. The conduction system is drawn by Atrium, not taken from the atlas.
+      </p>
+      <p>
+        The heart sounds are made by Atrium, not recorded. The first sound, lub, is mostly the mitral and
+        tricuspid valves closing; the second, dub, the aortic and pulmonary valves. Each is really two valves a
+        few hundredths of a second apart. In slow motion each sound keeps its real length, but that small gap is
+        stretched so you can hear both valves. The sound comes from the valves, blood and walls vibrating as the
+        valves snap shut, not from the leaflets slapping together.
       </p>
     </div>
 
