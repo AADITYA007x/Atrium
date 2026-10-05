@@ -28,4 +28,20 @@ were made readable. See tools/build_model.py.
 
 ## Facts
 
-Each fact in the app will list its source here and in the info panel.
+All part descriptions are written for Atrium in its own words (src/facts.js) and checked against:
+
+- OpenStax, Anatomy and Physiology 2e, chapter 19 (19.1 Heart Anatomy; 19.2 Cardiac Muscle and
+  Electrical Activity). https://openstax.org/books/anatomy-and-physiology/pages/19-1-heart-anatomy
+  No OpenStax text or images are reproduced.
+- StatPearls (NCBI Bookshelf): Cardiac Dominance; Anatomy, Thorax, Heart Right Coronary Arteries.
+- Radiopaedia: Right coronary artery.
+- Wikipedia: Mitral valve, Aortic arch, Pulmonary vein, Pulmonary artery, Inferior vena cava,
+  Brachiocephalic artery, Common carotid artery, Subclavian artery, Oblique vein of the left atrium.
+
+Each part's panel in the app links the sources used for it.
+
+Interpretations made by Atrium (also stated in the app):
+- The atlas vessel named "diagonal branch of left anterior descending artery" is shown as the
+  circumflex artery, because its course matches the circumflex.
+- The atlas "medial" papillary muscle is shown as the septal papillary muscle of the right ventricle.
+- Papillary muscles are assigned to a ventricle by their position in the model.

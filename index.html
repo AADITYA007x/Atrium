@@ -15,7 +15,7 @@
     />
   </head>
   <body>
-    <canvas id="scene" aria-label="A 3D model of the human heart. Drag to turn it."></canvas>
+    <canvas id="scene" aria-label="A 3D model of the human heart. Drag to turn it, click a part to learn about it."></canvas>
 
     <div id="loading" role="status">
       <p>Gathering the heart</p>
@@ -24,7 +24,39 @@
 
     <header class="title">
       <h1>Atrium</h1>
+      <button id="browser-toggle" type="button" aria-expanded="false" aria-controls="browser">Parts</button>
     </header>
+
+    <nav id="browser" aria-label="Parts of the heart" aria-hidden="true">
+      <label class="search">
+        <span class="visually-hidden">Search parts</span>
+        <input id="search" type="search" placeholder="Search parts" autocomplete="off" spellcheck="false" />
+      </label>
+      <div id="parts-list"></div>
+      <p id="parts-empty" hidden></p>
+    </nav>
+
+    <aside id="panel" aria-hidden="true" aria-labelledby="panel-name">
+      <button class="panel-close" type="button" aria-label="Close">&times;</button>
+      <div class="panel-body">
+        <h2 id="panel-name"></h2>
+        <p class="panel-kind"></p>
+        <p class="panel-does"></p>
+        <p class="panel-fact"></p>
+        <div class="panel-connects">
+          <h3>Connects to</h3>
+          <ul></ul>
+        </div>
+        <div class="panel-note" hidden>
+          <h3>A note on accuracy</h3>
+          <p></p>
+        </div>
+        <div class="panel-sources">
+          <h3>Sources</h3>
+          <ul></ul>
+        </div>
+      </div>
+    </aside>
 
     <div id="label" aria-hidden="true">
       <span id="label-name"></span>
@@ -44,6 +76,7 @@
           <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.
           Combined, trimmed, recentred and compressed for Atrium; colours added.
         </p>
+        <p>Facts are written for Atrium and checked against the sources listed with each part.</p>
         <p>Educational only. Not medical advice.</p>
       </div>
     </footer>

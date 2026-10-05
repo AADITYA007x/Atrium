@@ -3,6 +3,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { loadHeart } from './heart.js';
 import { GROUPS } from './parts.js';
+import { createPanel } from './panel.js';
+import { createBrowser } from './browser.js';
 import './style.css';
 
 const canvas = document.getElementById('scene');
@@ -17,10 +19,12 @@ const creditsEl = document.getElementById('credits');
 
 const isTouch = window.matchMedia('(pointer: coarse)').matches;
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const narrow = () => window.innerWidth <= 760;
+let uiReady = false;
 
 hintEl.textContent = isTouch
-  ? 'Drag to turn. Pinch to zoom. Two fingers to move. Tap a part to name it.'
-  : 'Drag to turn. Scroll to zoom. Right-drag to move. Double-click empty space to recentre.';
+  ? 'Drag to turn. Pinch to zoom. Tap a part to learn about it.'
+  : 'Drag to turn. Scroll to zoom. Click a part to learn about it.';
 
 // Renderer, scene, camera
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -54,7 +58,7 @@ const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
 controls.dampingFactor = 0.07;
 controls.screenSpacePanning = true;
-controls.minDistance = 1.2;
+controls.minDistance = 0.8;
 controls.maxDistance = 14;
 controls.rotateSpeed = 0.7;
 controls.zoomSpeed = 0.8;
@@ -72,22 +76,62 @@ function homeDistance() {
   return (MODEL_RADIUS / Math.sin(fit / 2)) * 0.95;
 }
 
-function setHome() {
-  controls.target.copy(HOME_TARGET);
-  camera.position.copy(HOME_TARGET).addScaledVector(HOME_DIR, homeDistance());
-  controls.update();
+// Smooth camera flights
+let flight = null;
+function flyTo(target, position) {
+  if (reduceMotion) {
+    controls.target.copy(target);
+    camera.position.copy(position);
+    return;
+  }
+  flight = { t: 0, fromPos: camera.position.clone(), fromTarget: controls.target.clone(), toPos: position, toTarget: target };
 }
 
-// Smooth return to the home view
-let flight = null;
 function flyHome() {
-  flight = {
-    t: 0,
-    fromPos: camera.position.clone(),
-    fromTarget: controls.target.clone(),
-    toTarget: HOME_TARGET.clone(),
-    toPos: HOME_TARGET.clone().addScaledVector(HOME_DIR, homeDistance()),
-  };
+  flyTo(HOME_TARGET.clone(), HOME_TARGET.clone().addScaledVector(HOME_DIR, homeDistance()));
+}
+
+function flyToMesh(mesh) {
+  const box = new THREE.Box3().setFromObject(mesh);
+  const sphere = box.getBoundingSphere(new THREE.Sphere());
+  const part = mesh.userData.part;
+  const vFov = THREE.MathUtils.degToRad(camera.fov);
+  const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
+  const fit = Math.min(vFov, hFov);
+  const widen = Math.sin(vFov / 2) / Math.sin(fit / 2);
+  const minDist = (part?.inside ? 3.4 : 2.4) * widen;
+  const dist = THREE.MathUtils.clamp((sphere.radius / Math.sin(fit / 2)) * 1.35, minDist, 12);
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  flyTo(sphere.center.clone(), sphere.center.clone().addScaledVector(dir, dist));
+}
+
+// Keep the heart centred in the space the panels leave free
+const viewShift = { x: 0, y: 0, tx: 0, ty: 0 };
+function updateViewShiftTarget() {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  let tx = 0;
+  let ty = 0;
+  if (narrow()) {
+    if (panel.el.classList.contains('open')) ty = (panel.el.offsetHeight || h * 0.5) / 2;
+  } else {
+    if (panel.el.classList.contains('open')) tx += panel.el.offsetWidth / 2;
+    if (browser.isOpen()) tx -= document.getElementById('browser').offsetWidth / 2;
+  }
+  viewShift.tx = Math.min(tx, w * 0.3);
+  viewShift.ty = Math.min(ty, h * 0.3);
+}
+
+function applyViewShift() {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  viewShift.x += (viewShift.tx - viewShift.x) * (reduceMotion ? 1 : 0.08);
+  viewShift.y += (viewShift.ty - viewShift.y) * (reduceMotion ? 1 : 0.08);
+  if (Math.abs(viewShift.x) < 0.5 && Math.abs(viewShift.y) < 0.5 && viewShift.tx === 0 && viewShift.ty === 0) {
+    if (camera.view) camera.clearViewOffset();
+  } else {
+    camera.setViewOffset(w, h, viewShift.x, viewShift.y, w, h);
+  }
 }
 
 function resize() {
@@ -96,18 +140,81 @@ function resize() {
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
+  if (uiReady) updateViewShiftTarget();
 }
 window.addEventListener('resize', resize);
 resize();
-setHome();
+controls.target.copy(HOME_TARGET);
+camera.position.copy(HOME_TARGET).addScaledVector(HOME_DIR, homeDistance());
+controls.update();
+
+// Parts: selection, highlight, fading
+let meshes = [];
+const meshById = new Map();
+let hovered = null;
+let selected = null;
+
+const HOVER_GLOW = 0.12;
+const SELECT_GLOW = 0.24;
+
+function refreshGlow() {
+  for (const m of meshes) {
+    m.userData.glowTarget = m === selected ? SELECT_GLOW : m === hovered ? HOVER_GLOW : 0;
+  }
+}
+
+function refreshFade() {
+  const fadeOthers = !!selected?.userData.part?.inside;
+  for (const m of meshes) m.userData.opacityTarget = fadeOthers && m !== selected ? 0.07 : 1;
+}
+
+const panel = createPanel({
+  onSelect: (id, opts) => select(id, opts),
+  onClose: () => deselect(),
+});
+
+const browser = createBrowser({
+  onSelect: (id, opts) => select(id, opts),
+  onToggle: () => updateViewShiftTarget(),
+});
+
+uiReady = true;
+
+function select(id, { fly = false, fromList = false } = {}) {
+  const mesh = meshById.get(id);
+  if (!mesh) return;
+  selected = mesh;
+  refreshGlow();
+  refreshFade();
+  panel.show(id);
+  browser.setCurrent(id);
+  if (fromList && narrow()) browser.close();
+  stopIdleSpin();
+  hideLabel();
+  if (fly) flyToMesh(mesh);
+  requestAnimationFrame(updateViewShiftTarget);
+}
+
+function deselect() {
+  selected = null;
+  refreshGlow();
+  refreshFade();
+  panel.hide();
+  browser.setCurrent(null);
+  updateViewShiftTarget();
+}
 
 // Load the heart
-let meshes = [];
 loadHeart('/models/atrium-heart.glb', (p) => {
   loadingPct.textContent = `${Math.round(p * 100)}%`;
 })
   .then(({ root, meshes: m }) => {
     meshes = m;
+    for (const mesh of meshes) {
+      meshById.set(mesh.userData.partId, mesh);
+      mesh.userData.glowTarget = 0;
+      mesh.userData.opacityTarget = 1;
+    }
     scene.add(root);
     loadingEl.classList.add('done');
     document.body.classList.add('ready');
@@ -119,26 +226,24 @@ loadHeart('/models/atrium-heart.glb', (p) => {
     loadingPct.textContent = '';
   });
 
-// Hover and tap labels
+// Picking
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 let pointerClient = { x: 0, y: 0 };
 let pointerDirty = false;
-let hovered = null;
-let tapHideTimer = null;
 
 function pick(clientX, clientY) {
   pointer.set((clientX / window.innerWidth) * 2 - 1, -(clientY / window.innerHeight) * 2 + 1);
   raycaster.setFromCamera(pointer, camera);
-  const hits = raycaster.intersectObjects(meshes, false);
+  const pickable = meshes.filter((m) => m.userData.opacityTarget > 0.5);
+  const hits = raycaster.intersectObjects(pickable, false);
   return hits.length ? hits[0].object : null;
 }
 
 function setHovered(mesh) {
   if (hovered === mesh) return;
-  if (hovered) hovered.material.emissiveIntensity = 0;
   hovered = mesh;
-  if (hovered) hovered.material.emissiveIntensity = 0.12;
+  refreshGlow();
   canvas.style.cursor = hovered ? 'pointer' : '';
 }
 
@@ -148,7 +253,7 @@ function showLabel(mesh, x, y) {
   labelName.textContent = part.name;
   const kind = GROUPS[part.group]?.label ?? '';
   labelKind.textContent = part.side ? `${kind}, ${part.side}` : kind;
-  labelEl.dataset.blood = part.blood ?? '';
+  labelKind.dataset.blood = part.blood ?? '';
   const pad = 18;
   const maxX = window.innerWidth - labelEl.offsetWidth - pad;
   labelEl.style.transform = `translate(${Math.min(x + pad, maxX)}px, ${Math.max(y - 54, pad)}px)`;
@@ -171,8 +276,6 @@ canvas.addEventListener('pointerdown', (e) => {
   }
 });
 
-controls.addEventListener('start', stopIdleSpin);
-
 canvas.addEventListener('pointermove', (e) => {
   pointerClient = { x: e.clientX, y: e.clientY };
   if (e.pointerType === 'mouse') pointerDirty = true;
@@ -182,22 +285,13 @@ canvas.addEventListener('pointerup', (e) => {
   dragging = false;
   if (!downAt) return;
   const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y);
-  const quick = performance.now() - downAt.time < 400;
+  const quick = performance.now() - downAt.time < 450;
   downAt = null;
-  if (e.pointerType !== 'mouse' && moved < 8 && quick) {
-    const mesh = pick(e.clientX, e.clientY);
-    setHovered(mesh);
-    clearTimeout(tapHideTimer);
-    if (mesh) {
-      showLabel(mesh, e.clientX, e.clientY);
-      tapHideTimer = setTimeout(() => {
-        hideLabel();
-        setHovered(null);
-      }, 2600);
-    } else {
-      hideLabel();
-    }
-  }
+  if (moved > 6 || !quick || e.button > 0) return;
+  const mesh = pick(e.clientX, e.clientY);
+  if (mesh) select(mesh.userData.partId);
+  else if (selected) deselect();
+  if (e.pointerType === 'mouse') pointerDirty = true;
 });
 
 canvas.addEventListener('pointerleave', () => {
@@ -209,12 +303,25 @@ canvas.addEventListener('dblclick', (e) => {
   if (!pick(e.clientX, e.clientY)) flyHome();
 });
 
+window.addEventListener('keydown', (e) => {
+  const typing = e.target instanceof HTMLInputElement;
+  if (e.key === 'Escape') {
+    if (browser.isOpen() && (typing || !selected)) browser.close();
+    else if (selected) deselect();
+    else if (browser.isOpen()) browser.close();
+  } else if (e.key === '/' && !typing) {
+    e.preventDefault();
+    browser.open(true);
+  }
+});
+
 // Idle spin stops for good after the first touch of the heart
 let hintTimer = null;
 function stopIdleSpin() {
   controls.autoRotate = false;
   if (!hintTimer) hintTimer = setTimeout(() => hintEl.classList.add('gone'), 4000);
 }
+controls.addEventListener('start', stopIdleSpin);
 
 // Credits
 creditsBtn.addEventListener('click', () => {
@@ -237,9 +344,27 @@ function beatEnvelope(phase) {
 const clock = new THREE.Clock();
 renderer.setAnimationLoop(() => {
   const t = clock.getElapsedTime();
+  const ease = reduceMotion ? 1 : 0.12;
 
   if (!reduceMotion) {
     rim.intensity = RIM_BASE * (1 + 0.35 * beatEnvelope(((t * BPM) / 60) % 1));
+  }
+
+  for (const m of meshes) {
+    const mat = m.material;
+    mat.emissiveIntensity += (m.userData.glowTarget - mat.emissiveIntensity) * ease;
+    const target = m.userData.opacityTarget;
+    if (Math.abs(mat.opacity - target) > 0.002) {
+      mat.opacity += (target - mat.opacity) * ease;
+    } else {
+      mat.opacity = target;
+    }
+    const see = mat.opacity < 0.999;
+    if (mat.transparent !== see) {
+      mat.transparent = see;
+      mat.needsUpdate = true;
+    }
+    mat.depthWrite = mat.opacity > 0.5;
   }
 
   if (flight) {
@@ -250,11 +375,13 @@ renderer.setAnimationLoop(() => {
     if (flight.t === 1) flight = null;
   }
 
+  applyViewShift();
+
   if (pointerDirty && !dragging && meshes.length) {
     pointerDirty = false;
     const mesh = pick(pointerClient.x, pointerClient.y);
     setHovered(mesh);
-    if (mesh) showLabel(mesh, pointerClient.x, pointerClient.y);
+    if (mesh && mesh !== selected) showLabel(mesh, pointerClient.x, pointerClient.y);
     else hideLabel();
   }
 
