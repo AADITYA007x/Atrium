@@ -53,7 +53,7 @@ function cutColorFor(part) {
   }
 }
 
-const VERTEX_HEAD = /* glsl */ `
+export const VERTEX_HEAD = /* glsl */ `
 uniform vec3 uApex;
 uniform vec3 uAxis;
 uniform float uLen;

@@ -876,9 +876,80 @@ body.panel-open #beat:focus-within {
   margin: 0.15rem 0 0;
 }
 
+.beat-extra {
+  display: flex;
+  align-items: baseline;
+  gap: 1.2rem;
+}
+
+.beat-flow {
+  background: none;
+  border: none;
+  padding: 0.15rem 0;
+  font-size: 1rem;
+  font-style: italic;
+  color: var(--ink-soft);
+  cursor: pointer;
+  border-bottom: 1px solid rgba(217, 181, 108, 0.35);
+  transition: color 0.3s ease;
+}
+
+.beat-flow:hover,
+.beat-flow[aria-pressed="true"] {
+  color: var(--gold);
+}
+
+.flow-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.92rem;
+  font-style: italic;
+  color: var(--ink-faint);
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+#beat.flow-on .flow-key {
+  opacity: 1;
+}
+
+.flow-key i {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--venous);
+  box-shadow: 0 0 8px var(--venous);
+}
+
+.flow-key i.key-rich {
+  margin-left: 0.5rem;
+  background: var(--arterial);
+  box-shadow: 0 0 8px var(--arterial);
+}
+
+.flow-label {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  pointer-events: none;
+  font-size: 1rem;
+  font-style: italic;
+  color: var(--ink-soft);
+  text-shadow: 0 1px 10px rgba(13, 8, 9, 0.9);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+
+.flow-label.visible {
+  opacity: 0.85;
+}
+
 .beat-about {
   flex: none;
-  align-self: flex-end;
+  margin-left: auto;
   background: none;
   border: none;
   padding: 0.2rem 0;
@@ -1016,11 +1087,20 @@ body.panel-open #beat:focus-within {
     flex: 1 1 40%;
   }
 
-  .beat-about {
+  .beat-extra {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.2rem 1rem;
+  }
+
+  .flow-key {
+    order: 3;
     flex-basis: 100%;
-    text-align: center;
-    align-self: center;
-    padding: 0;
+    justify-content: center;
+  }
+
+  .beat-about {
+    margin-left: 0;
   }
 
   .beat-field output small {

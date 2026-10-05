@@ -10,6 +10,7 @@ import { createSlice } from './slice.js';
 import { createBeat, measureHeart } from './beat.js';
 import { createDock } from './dock.js';
 import { buildValves } from './valves.js';
+import { createFlow } from './flow.js';
 import './style.css';
 
 const canvas = document.getElementById('scene');
@@ -199,6 +200,10 @@ controls.update();
 // Parts: selection, highlight, fading
 let meshes = [];
 let valveSet = null;
+let flow = null;
+let flowWanted = false;
+// While blood flow is shown, these walls turn see-through so the blood inside is visible
+const FLOW_SEE_THROUGH = ['chamber', 'wall', 'vessel'];
 const meshById = new Map();
 let hovered = null;
 let selected = null;
@@ -219,6 +224,7 @@ function refreshFade() {
     let target = layerOpacity;
     if (m === selected) target = 1;
     else if (fadeOthers) target = Math.min(layerOpacity, 0.07);
+    else if (flowWanted && FLOW_SEE_THROUGH.includes(m.userData.part?.group)) target = Math.min(layerOpacity, 0.13);
     m.userData.opacityTarget = target;
   }
 }
@@ -241,7 +247,13 @@ const layers = createLayers({ onChange: () => refreshFade() });
 const beat = createBeat({ reduceMotion });
 const halo = createHalo(clipPlane);
 scene.add(halo.mesh);
-const dock = createDock(beat);
+const dock = createDock(beat, {
+  onFlow: (on) => {
+    flowWanted = on;
+    flow?.setOn(on);
+    refreshFade();
+  },
+});
 const rootStyle = document.documentElement.style;
 
 // Layers and Slice cards: one open at a time
@@ -365,6 +377,8 @@ loadHeart('/models/atrium-heart.glb', {
     scene.add(valveSet.chordae);
     meshes.push(valveSet.chordae);
     meshById.set('chordae_tendineae', valveSet.chordae);
+    flow = createFlow({ meshById, valveSet, scene, clipPlane });
+    flow.setOn(flowWanted);
     for (const mesh of [...valveSet.valves.map((v) => v.mesh), valveSet.chordae]) {
       mesh.userData.glowTarget = 0;
       mesh.userData.opacityTarget = 1;
@@ -497,6 +511,8 @@ renderer.setAnimationLoop(() => {
 
   const info = beat.update(dt);
   valveSet?.update(info.av, info.sl);
+  const simDt = beat.state.playing ? Math.min(dt, 0.1) / beat.state.slow : 0;
+  flow?.update(simDt, info, camera, { top: 90, bottom: dock.el.getBoundingClientRect().top - 16 });
   dock.update(info);
   rim.intensity = RIM_BASE * (1 + 0.45 * info.v + 0.2 * info.a);
   rootStyle.setProperty('--pulse', (0.35 + 0.65 * Math.max(info.v * 0.9, info.a * 0.5)).toFixed(3));

@@ -10,7 +10,7 @@ const MOODS = [
 const PLAY_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>';
 const PAUSE_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 5.5h3v13h-3zM13.5 5.5h3v13h-3z"/></svg>';
 
-export function createDock(beat) {
+export function createDock(beat, { onFlow } = {}) {
   const el = document.getElementById('beat');
   const phaseName = el.querySelector('.phase-name');
   const phaseSub = el.querySelector('.phase-sub');
@@ -23,6 +23,7 @@ export function createDock(beat) {
   const rateOut = el.querySelector('.beat-rate-out');
   const aboutBtn = el.querySelector('.beat-about');
   const note = document.getElementById('beat-note');
+  const flowBtn = el.querySelector('.beat-flow');
 
   let lastPhase = null;
   let readable = false;
@@ -78,6 +79,14 @@ export function createDock(beat) {
     const open = note.hidden;
     note.hidden = !open;
     aboutBtn.setAttribute('aria-expanded', String(open));
+  });
+
+  flowBtn.addEventListener('click', () => {
+    const on = flowBtn.getAttribute('aria-pressed') !== 'true';
+    flowBtn.setAttribute('aria-pressed', String(on));
+    flowBtn.textContent = on ? 'Hide blood flow' : 'Show blood flow';
+    el.classList.toggle('flow-on', on);
+    onFlow?.(on);
   });
 
   renderPlay();
