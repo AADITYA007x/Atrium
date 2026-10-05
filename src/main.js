@@ -9,6 +9,7 @@ import { createLayers } from './layers.js';
 import { createSlice } from './slice.js';
 import { createBeat, measureHeart } from './beat.js';
 import { createDock } from './dock.js';
+import { buildValves } from './valves.js';
 import './style.css';
 
 const canvas = document.getElementById('scene');
@@ -197,6 +198,7 @@ controls.update();
 
 // Parts: selection, highlight, fading
 let meshes = [];
+let valveSet = null;
 const meshById = new Map();
 let hovered = null;
 let selected = null;
@@ -312,7 +314,7 @@ function select(id, { fly = false, fromList = false } = {}) {
   const mesh = meshById.get(id);
   if (!mesh) return;
   selected = mesh;
-  halo.attach(mesh);
+  halo.attach(mesh.isMesh ? mesh : null);
   refreshGlow();
   refreshFade();
   panel.show(id);
@@ -351,6 +353,22 @@ loadHeart('/models/atrium-heart.glb', {
     root.updateMatrixWorld(true);
     for (const mesh of meshes) mesh.material.userData.invModel.value.copy(mesh.matrixWorld).invert();
     measureHeart(meshById);
+
+    // Replace the atlas's still valves with hand-built leaflets that open and close
+    valveSet = buildValves({ meshById, clipPlane });
+    for (const v of valveSet.valves) {
+      v.old.parent.remove(v.old);
+      meshes.splice(meshes.indexOf(v.old), 1, v.mesh);
+      meshById.set(v.id, v.mesh);
+      scene.add(v.mesh);
+    }
+    scene.add(valveSet.chordae);
+    meshes.push(valveSet.chordae);
+    meshById.set('chordae_tendineae', valveSet.chordae);
+    for (const mesh of [...valveSet.valves.map((v) => v.mesh), valveSet.chordae]) {
+      mesh.userData.glowTarget = 0;
+      mesh.userData.opacityTarget = 1;
+    }
     for (const mesh of meshes) {
       if (['chamber', 'wall'].includes(mesh.userData.part?.group)) heartBounds.expandByObject(mesh);
     }
@@ -368,6 +386,7 @@ loadHeart('/models/atrium-heart.glb', {
 
 // Picking
 const raycaster = new THREE.Raycaster();
+raycaster.params.Line.threshold = 0.012;
 const pointer = new THREE.Vector2();
 let pointerClient = { x: 0, y: 0 };
 
@@ -477,6 +496,7 @@ renderer.setAnimationLoop(() => {
   const ease = reduceMotion ? 1 : 0.12;
 
   const info = beat.update(dt);
+  valveSet?.update(info.av, info.sl);
   dock.update(info);
   rim.intensity = RIM_BASE * (1 + 0.45 * info.v + 0.2 * info.a);
   rootStyle.setProperty('--pulse', (0.35 + 0.65 * Math.max(info.v * 0.9, info.a * 0.5)).toFixed(3));

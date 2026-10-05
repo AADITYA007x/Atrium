@@ -104,7 +104,7 @@ uniform float uGlow;
 uniform vec3 uGlowColor;
 `;
 
-function materialFor(part, partId, clipPlane) {
+export function materialFor(part, partId, clipPlane) {
   const base = {
     roughness: 0.5,
     metalness: 0,
@@ -184,6 +184,28 @@ function materialFor(part, partId, clipPlane) {
       );
   };
   material.customProgramCacheKey = () => 'atrium-v4';
+  return material;
+}
+
+// Thin lines (the chordae) that bend with the beat and brighten when selected
+export function lineMaterialFor(color, clipPlane) {
+  const local = { uGlow: { value: 0 } };
+  const material = new THREE.LineBasicMaterial({ color: new THREE.Color(color), clippingPlanes: [clipPlane], transparent: true, opacity: 1 });
+  material.userData.glow = local.uGlow;
+  material.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, beatUniforms, local, {
+      uSwell: { value: 0 },
+      uInvModel: { value: new THREE.Matrix4() },
+      uGlowColor: glowColor,
+    });
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', `#include <common>\n${VERTEX_HEAD}`)
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed = atriumDeform(transformed, vec3(0.0));');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform float uGlow;\nuniform vec3 uGlowColor;')
+      .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb = mix(diffuseColor.rgb, uGlowColor * 1.4, clamp(uGlow, 0.0, 1.0) * 0.85);');
+  };
+  material.customProgramCacheKey = () => 'atrium-line';
   return material;
 }
 

@@ -36,13 +36,13 @@ export const SOURCES = {
 };
 
 const VALVE_MODEL_NOTE =
-  'In this model the valve is one shape from the atlas, frozen part-way open. Separate leaflets that open and close arrive with the beating heart.';
+  'These leaflets are hand-built for Atrium. Their position and size come from the atlas valve, but their shape and motion are simplified: real leaflets are thinner, scalloped, and meet along curved lines.';
 
 const PAPILLARY_FACT =
   'Papillary muscles do not open or close the valve. They tighten as the ventricle squeezes, pulling on tendinous cords (the chordae tendineae, or "heart strings") so the valve flaps cannot be blown back into the atrium, like guy-ropes on a tent.';
 
 const PAPILLARY_NOTE =
-  'The atlas names these muscles but not which ventricle each sits in; Atrium assigns them by position. Textbooks describe three in the right ventricle (anterior, posterior, septal) and two in the left. The cords themselves are not in the model yet.';
+  'The atlas names these muscles but not which ventricle each sits in; Atrium assigns them by position. Textbooks describe three in the right ventricle (anterior, posterior, septal) and two in the left.';
 
 const PULM_VEIN_FACT =
   'The pulmonary veins are the only veins after birth that carry oxygen-rich blood, which is why they are red here. Most people have four, but the number varies; some have three or five.';
@@ -83,7 +83,7 @@ export const FACTS = {
   tricuspid_valve: {
     does: 'The one-way door between the right atrium and right ventricle. It opens to let the ventricle fill and closes when the ventricle squeezes.',
     fact: 'It usually has three flaps, each tied by tendinous cords to papillary muscles. Its closing, together with the mitral valve\u2019s, makes the first heart sound, the \u201club\u201d.',
-    connects: ['right_atrium', 'right_ventricle', 'papillary_anterior', 'papillary_posterior', 'papillary_medial'],
+    connects: ['right_atrium', 'right_ventricle', 'chordae_tendineae', 'papillary_anterior', 'papillary_posterior', 'papillary_medial'],
     note: VALVE_MODEL_NOTE,
     sources: ['openstax', 'hra'],
   },
@@ -97,18 +97,25 @@ export const FACTS = {
   mitral_valve: {
     does: 'The one-way door between the left atrium and left ventricle.',
     fact: 'It has two cusps, so it is also called the bicuspid valve. Its name comes from its resemblance to a bishop\u2019s mitre.',
-    connects: ['left_atrium', 'left_ventricle', 'papillary_anterolateral', 'papillary_posteromedial'],
+    connects: ['left_atrium', 'left_ventricle', 'chordae_tendineae', 'papillary_anterolateral', 'papillary_posteromedial'],
     note: VALVE_MODEL_NOTE,
     sources: ['openstax', 'wikiMitral', 'hra'],
   },
   aortic_valve: {
     does: 'Lets blood leave the left ventricle for the aorta, then closes to stop it falling back.',
-    fact: 'Just above it, the aortic wall bulges into small pouches called sinuses. The two coronary arteries start from two of them, so the heart feeds itself first.',
+    fact: 'Just above it, the aortic wall bulges into small pouches called sinuses. The two coronary arteries start from two of them, so the heart feeds itself first. In Atrium, two cusps are turned to face those openings.',
     connects: ['left_ventricle', 'ascending_aorta', 'right_coronary_artery', 'left_coronary_artery'],
     note: VALVE_MODEL_NOTE,
     sources: ['openstax', 'hra'],
   },
 
+  chordae_tendineae: {
+    does: 'Thin, strong cords that tie the free edges of the mitral and tricuspid valves to the papillary muscles.',
+    fact: 'They are about 80% collagen, the same tough protein as tendons, and are sometimes called the heart strings. Pulled tight as the ventricles squeeze, they stop the valve flaps from flipping back into the atria.',
+    connects: ['mitral_valve', 'tricuspid_valve', 'papillary_anterolateral', 'papillary_posteromedial', 'papillary_anterior', 'papillary_posterior', 'papillary_medial'],
+    note: 'Hand-built for Atrium and not in the atlas: a few straight cords join each leaflet edge to the nearest papillary muscle. Real valves have many more, finer cords that branch as they go.',
+    sources: ['openstax'],
+  },
   papillary_anterior: {
     does: 'A finger of muscle in the right ventricle that anchors cords from the tricuspid valve.',
     fact: PAPILLARY_FACT,

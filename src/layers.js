@@ -6,7 +6,7 @@ export const LAYERS = [
   { id: 'atria', label: 'Atria', parts: ['right_atrium', 'left_atrium'] },
   { id: 'ventricles', label: 'Ventricles', parts: ['right_ventricle', 'left_ventricle'] },
   { id: 'septum', label: 'Septum', parts: ['interventricular_septum'] },
-  { id: 'papillary', label: 'Papillary muscles', groups: ['papillary'] },
+  { id: 'papillary', label: 'Papillary muscles and cords', groups: ['papillary', 'cords'] },
   { id: 'valves', label: 'Valves', groups: ['valve'] },
 ];
 

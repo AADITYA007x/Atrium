@@ -8,12 +8,13 @@ export const GROUPS = {
   wall: { label: 'Muscle wall', plural: 'Muscle wall' },
   valve: { label: 'Valve', plural: 'Valves' },
   papillary: { label: 'Papillary muscle', plural: 'Papillary muscles' },
+  cords: { label: 'Tendinous cords', plural: 'Tendinous cords' },
   vessel: { label: 'Great vessel', plural: 'Great vessels' },
   coronaryArtery: { label: 'Coronary artery', plural: 'Coronary arteries' },
   cardiacVein: { label: 'Cardiac vein', plural: 'Cardiac veins' },
 };
 
-export const GROUP_ORDER = ['chamber', 'valve', 'wall', 'papillary', 'vessel', 'coronaryArtery', 'cardiacVein'];
+export const GROUP_ORDER = ['chamber', 'valve', 'wall', 'papillary', 'cords', 'vessel', 'coronaryArtery', 'cardiacVein'];
 
 export const PARTS = {
   right_atrium: { name: 'Right atrium', group: 'chamber', blood: 'poor', aliases: ['RA'] },
@@ -32,6 +33,7 @@ export const PARTS = {
   papillary_medial: { name: 'Septal papillary muscle', side: 'right ventricle', group: 'papillary', inside: true, aliases: ['medial'] },
   papillary_anterolateral: { name: 'Anterolateral papillary muscle', side: 'left ventricle', group: 'papillary', inside: true },
   papillary_posteromedial: { name: 'Posteromedial papillary muscle', side: 'left ventricle', group: 'papillary', inside: true },
+  chordae_tendineae: { name: 'Chordae tendineae', group: 'cords', inside: true, aliases: ['heart strings', 'cords', 'tendinous cords'] },
 
   superior_vena_cava: { name: 'Superior vena cava', group: 'vessel', blood: 'poor', aliases: ['SVC'] },
   inferior_vena_cava: { name: 'Inferior vena cava', group: 'vessel', blood: 'poor', aliases: ['IVC'] },

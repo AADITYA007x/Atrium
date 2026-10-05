@@ -97,7 +97,20 @@ export function stateAt(t, c) {
     const x = (t - c.tV - c.iv) / ej;
     e = Math.sin(Math.min(x * 1.4, 1) * Math.PI * 0.5) * (1 - smooth((x - 0.35) / 0.65));
   }
-  return { v, a, e };
+  // Valve openness: 1 open, 0 shut. Closing is quick; opening a little slower.
+  const f = Math.pow(c.RR / 0.8, 0.4);
+  const ramp = (x, d) => smooth(x / d);
+  let av = 1;
+  const avOpenAt = c.tES + c.ivr;
+  if (t >= c.tV && t < avOpenAt) av = 1 - ramp(t - c.tV, 0.035 * f);
+  else if (t >= avOpenAt) av = ramp(t - avOpenAt, 0.06 * f);
+  let sl = 0;
+  const slOpenAt = c.tV + c.iv;
+  if (t >= slOpenAt && t < c.tES) sl = ramp(t - slOpenAt, 0.04 * f);
+  else if (t >= c.tES) sl = 1 - ramp(t - c.tES, 0.03 * f);
+  sl = Math.max(0, Math.min(1, sl));
+
+  return { v, a, e, av, sl };
 }
 
 export function createBeat({ reduceMotion }) {
