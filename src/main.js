@@ -1,10 +1,14 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { loadHeart } from './heart.js';
+import { loadHeart, createHalo } from './heart.js';
 import { GROUPS } from './parts.js';
 import { createPanel } from './panel.js';
 import { createBrowser } from './browser.js';
+import { createLayers } from './layers.js';
+import { createSlice } from './slice.js';
+import { createBeat, measureHeart } from './beat.js';
+import { createDock } from './dock.js';
 import './style.css';
 
 const canvas = document.getElementById('scene');
@@ -21,6 +25,7 @@ const isTouch = window.matchMedia('(pointer: coarse)').matches;
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const narrow = () => window.innerWidth <= 760;
 let uiReady = false;
+let pointerDirty = false;
 
 hintEl.textContent = isTouch
   ? 'Drag to turn. Pinch to zoom. Tap a part to learn about it.'
@@ -33,6 +38,9 @@ renderer.setClearColor(0x0d0809, 1);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.95;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.localClippingEnabled = true;
+
+const clipPlane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 1e6);
 
 const scene = new THREE.Scene();
 const pmrem = new THREE.PMREMGenerator(renderer);
@@ -73,7 +81,7 @@ function homeDistance() {
   const vFov = THREE.MathUtils.degToRad(camera.fov);
   const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
   const fit = Math.min(vFov, hFov);
-  return (MODEL_RADIUS / Math.sin(fit / 2)) * 0.95;
+  return (MODEL_RADIUS / Math.sin(fit / 2)) * 1.05;
 }
 
 // Smooth camera flights
@@ -101,8 +109,43 @@ function flyToMesh(mesh) {
   const widen = Math.sin(vFov / 2) / Math.sin(fit / 2);
   const minDist = (part?.inside ? 3.4 : 2.4) * widen;
   const dist = THREE.MathUtils.clamp((sphere.radius / Math.sin(fit / 2)) * 1.35, minDist, 12);
-  const dir = camera.position.clone().sub(controls.target).normalize();
-  flyTo(sphere.center.clone(), sphere.center.clone().addScaledVector(dir, dist));
+  const centre = sphere.center.clone();
+  const current = camera.position.clone().sub(controls.target).normalize();
+  const dir = part?.inside ? current : bestViewDirection(mesh, centre, dist, current);
+  flyTo(centre, centre.clone().addScaledVector(dir, dist));
+}
+
+// Find a direction from which the part is not hidden behind the rest of the heart.
+const viewRay = new THREE.Raycaster();
+function bestViewDirection(mesh, centre, dist, current) {
+  const heartCentre = heartBounds.isEmpty() ? new THREE.Vector3() : heartBounds.getCenter(new THREE.Vector3());
+  const outward = centre.clone().sub(heartCentre);
+  if (outward.length() < 0.2) outward.copy(current);
+  outward.normalize();
+  const up = new THREE.Vector3(0, 1, 0);
+  const tilt = (v, y) => v.clone().setY(v.y + y).normalize();
+  const turn = (v, deg) => v.clone().applyAxisAngle(up, THREE.MathUtils.degToRad(deg));
+
+  const candidates = [
+    current,
+    tilt(outward, 0.25),
+    outward,
+    turn(tilt(outward, 0.25), 50),
+    turn(tilt(outward, 0.25), -50),
+    tilt(outward, -0.7),
+    tilt(outward, 0.9),
+    turn(outward, 100),
+    turn(outward, -100),
+  ];
+
+  const blockers = meshes.filter((m) => m.visible && m.userData.opacityTarget > 0.5);
+  for (const dir of candidates) {
+    const from = centre.clone().addScaledVector(dir, dist);
+    viewRay.set(from, dir.clone().negate());
+    const hit = viewRay.intersectObjects(blockers, false).find((h) => clipPlane.distanceToPoint(h.point) >= 0);
+    if (!hit || hit.object === mesh) return dir;
+  }
+  return tilt(outward, 0.25);
 }
 
 // Keep the heart centred in the space the panels leave free
@@ -114,12 +157,16 @@ function updateViewShiftTarget() {
   let ty = 0;
   if (narrow()) {
     if (panel.el.classList.contains('open')) ty = (panel.el.offsetHeight || h * 0.5) / 2;
+    const card = Object.values(tools).find((t) => t.card.classList.contains('open'))?.card;
+    if (card) ty -= (card.offsetTop + card.offsetHeight) / 2.5;
+    else if (!panel.el.classList.contains('open')) ty += dock.el.offsetHeight / 2;
   } else {
+    ty += dock.el.offsetHeight / 2;
     if (panel.el.classList.contains('open')) tx += panel.el.offsetWidth / 2;
     if (browser.isOpen()) tx -= document.getElementById('browser').offsetWidth / 2;
   }
-  viewShift.tx = Math.min(tx, w * 0.3);
-  viewShift.ty = Math.min(ty, h * 0.3);
+  viewShift.tx = THREE.MathUtils.clamp(tx, -w * 0.3, w * 0.3);
+  viewShift.ty = THREE.MathUtils.clamp(ty, -h * 0.3, h * 0.3);
 }
 
 function applyViewShift() {
@@ -154,8 +201,8 @@ const meshById = new Map();
 let hovered = null;
 let selected = null;
 
-const HOVER_GLOW = 0.12;
-const SELECT_GLOW = 0.24;
+const HOVER_GLOW = 0.45;
+const SELECT_GLOW = 1;
 
 function refreshGlow() {
   for (const m of meshes) {
@@ -165,7 +212,13 @@ function refreshGlow() {
 
 function refreshFade() {
   const fadeOthers = !!selected?.userData.part?.inside;
-  for (const m of meshes) m.userData.opacityTarget = fadeOthers && m !== selected ? 0.07 : 1;
+  for (const m of meshes) {
+    const layerOpacity = layers.opacityFor(m.userData.partId, m.userData.part);
+    let target = layerOpacity;
+    if (m === selected) target = 1;
+    else if (fadeOthers) target = Math.min(layerOpacity, 0.07);
+    m.userData.opacityTarget = target;
+  }
 }
 
 const panel = createPanel({
@@ -175,15 +228,91 @@ const panel = createPanel({
 
 const browser = createBrowser({
   onSelect: (id, opts) => select(id, opts),
-  onToggle: () => updateViewShiftTarget(),
+  onToggle: (open) => {
+    if (open) closeTools();
+    updateViewShiftTarget();
+  },
 });
 
+const layers = createLayers({ onChange: () => refreshFade() });
+
+const beat = createBeat({ reduceMotion });
+const halo = createHalo(clipPlane);
+scene.add(halo.mesh);
+const dock = createDock(beat);
+const rootStyle = document.documentElement.style;
+
+// Layers and Slice cards: one open at a time
+const tools = {
+  layers: { btn: document.getElementById('layers-toggle'), card: document.getElementById('layers') },
+  slice: { btn: document.getElementById('slice-toggle'), card: document.getElementById('slice') },
+};
+function openTool(name) {
+  for (const [key, t] of Object.entries(tools)) {
+    const open = key === name && !t.card.classList.contains('open');
+    t.card.classList.toggle('open', open);
+    t.card.setAttribute('aria-hidden', String(!open));
+    t.btn.setAttribute('aria-expanded', String(open));
+  }
+  if (name && browser.isOpen()) browser.close();
+  updateViewShiftTarget();
+}
+function closeTools() {
+  for (const t of Object.values(tools)) {
+    t.card.classList.remove('open');
+    t.card.setAttribute('aria-hidden', 'true');
+    t.btn.setAttribute('aria-expanded', 'false');
+  }
+  updateViewShiftTarget();
+}
+function toolsOpen() {
+  return Object.values(tools).some((t) => t.card.classList.contains('open'));
+}
+tools.layers.btn.addEventListener('click', () => openTool('layers'));
+tools.slice.btn.addEventListener('click', () => openTool('slice'));
+
+// Slice
+const heartBounds = new THREE.Box3();
+const planeHelper = new THREE.Mesh(
+  new THREE.RingGeometry(1.75, 1.77, 96),
+  new THREE.MeshBasicMaterial({ color: 0xd9b56c, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false }),
+);
+planeHelper.renderOrder = 10;
+planeHelper.visible = false;
+scene.add(planeHelper);
+let helperShownAt = -1e9;
+
+const slice = createSlice({
+  plane: clipPlane,
+  getBounds: () => heartBounds,
+  getViewDirection: () => controls.target.clone().sub(camera.position).normalize(),
+  onChange: ({ on }) => {
+    if (on && !heartBounds.isEmpty()) {
+      const centre = heartBounds.getCenter(new THREE.Vector3());
+      clipPlane.projectPoint(centre, planeHelper.position);
+      planeHelper.lookAt(planeHelper.position.clone().add(clipPlane.normal));
+      helperShownAt = performance.now();
+    }
+    pointerDirty = true;
+  },
+  onAim: (normal) => {
+    if (heartBounds.isEmpty()) return;
+    stopIdleSpin();
+    const target = controls.target.clone();
+    const dist = camera.position.distanceTo(target);
+    flyTo(target, target.clone().addScaledVector(normal, -dist));
+  },
+});
+
+
 uiReady = true;
+requestAnimationFrame(updateViewShiftTarget);
 
 function select(id, { fly = false, fromList = false } = {}) {
   const mesh = meshById.get(id);
   if (!mesh) return;
   selected = mesh;
+  halo.attach(mesh);
   refreshGlow();
   refreshFade();
   panel.show(id);
@@ -205,8 +334,11 @@ function deselect() {
 }
 
 // Load the heart
-loadHeart('/models/atrium-heart.glb', (p) => {
-  loadingPct.textContent = `${Math.round(p * 100)}%`;
+loadHeart('/models/atrium-heart.glb', {
+  clipPlane,
+  onProgress: (p) => {
+    loadingPct.textContent = `${Math.round(p * 100)}%`;
+  },
 })
   .then(({ root, meshes: m }) => {
     meshes = m;
@@ -216,6 +348,14 @@ loadHeart('/models/atrium-heart.glb', (p) => {
       mesh.userData.opacityTarget = 1;
     }
     scene.add(root);
+    root.updateMatrixWorld(true);
+    for (const mesh of meshes) mesh.material.userData.invModel.value.copy(mesh.matrixWorld).invert();
+    measureHeart(meshById);
+    for (const mesh of meshes) {
+      if (['chamber', 'wall'].includes(mesh.userData.part?.group)) heartBounds.expandByObject(mesh);
+    }
+    slice.refresh();
+    refreshFade();
     loadingEl.classList.add('done');
     document.body.classList.add('ready');
   })
@@ -230,14 +370,14 @@ loadHeart('/models/atrium-heart.glb', (p) => {
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 let pointerClient = { x: 0, y: 0 };
-let pointerDirty = false;
 
 function pick(clientX, clientY) {
   pointer.set((clientX / window.innerWidth) * 2 - 1, -(clientY / window.innerHeight) * 2 + 1);
   raycaster.setFromCamera(pointer, camera);
-  const pickable = meshes.filter((m) => m.userData.opacityTarget > 0.5);
+  const pickable = meshes.filter((m) => m.visible && m.userData.opacityTarget > 0.5);
   const hits = raycaster.intersectObjects(pickable, false);
-  return hits.length ? hits[0].object : null;
+  const hit = hits.find((h) => clipPlane.distanceToPoint(h.point) >= 0);
+  return hit ? hit.object : null;
 }
 
 function setHovered(mesh) {
@@ -306,7 +446,8 @@ canvas.addEventListener('dblclick', (e) => {
 window.addEventListener('keydown', (e) => {
   const typing = e.target instanceof HTMLInputElement;
   if (e.key === 'Escape') {
-    if (browser.isOpen() && (typing || !selected)) browser.close();
+    if (toolsOpen()) closeTools();
+    else if (browser.isOpen() && (typing || !selected)) browser.close();
     else if (selected) deselect();
     else if (browser.isOpen()) browser.close();
   } else if (e.key === '/' && !typing) {
@@ -330,29 +471,21 @@ creditsBtn.addEventListener('click', () => {
   creditsBtn.setAttribute('aria-expanded', String(open));
 });
 
-// A quiet sign of life: the rim light swells softly at a resting 60 beats a minute
-const BPM = 60;
-function beatEnvelope(phase) {
-  const bump = (p, start, length) => {
-    if (p < start || p > start + length) return 0;
-    const s = Math.sin(((p - start) / length) * Math.PI);
-    return s * s;
-  };
-  return 0.25 * bump(phase, 0.0, 0.12) + bump(phase, 0.16, 0.3);
-}
-
 const clock = new THREE.Clock();
 renderer.setAnimationLoop(() => {
-  const t = clock.getElapsedTime();
+  const dt = clock.getDelta();
   const ease = reduceMotion ? 1 : 0.12;
 
-  if (!reduceMotion) {
-    rim.intensity = RIM_BASE * (1 + 0.35 * beatEnvelope(((t * BPM) / 60) % 1));
-  }
+  const info = beat.update(dt);
+  dock.update(info);
+  rim.intensity = RIM_BASE * (1 + 0.45 * info.v + 0.2 * info.a);
+  rootStyle.setProperty('--pulse', (0.35 + 0.65 * Math.max(info.v * 0.9, info.a * 0.5)).toFixed(3));
 
   for (const m of meshes) {
     const mat = m.material;
-    mat.emissiveIntensity += (m.userData.glowTarget - mat.emissiveIntensity) * ease;
+    const glow = mat.userData.glow;
+    const glowTarget = m === selected ? SELECT_GLOW * (0.8 + 0.2 * info.v) : m.userData.glowTarget;
+    glow.value += (glowTarget - glow.value) * (reduceMotion ? 1 : 0.15);
     const target = m.userData.opacityTarget;
     if (Math.abs(mat.opacity - target) > 0.002) {
       mat.opacity += (target - mat.opacity) * ease;
@@ -365,7 +498,17 @@ renderer.setAnimationLoop(() => {
       mat.needsUpdate = true;
     }
     mat.depthWrite = mat.opacity > 0.5;
+    m.visible = mat.opacity > 0.01 || target > 0;
   }
+
+  const haloTarget = selected ? 0.5 + 0.25 * info.v : 0;
+  const haloNow = halo.opacity + (haloTarget - halo.opacity) * (reduceMotion ? 1 : 0.12);
+  halo.setOpacity(haloNow);
+  if (!selected && haloNow < 0.005) halo.attach(null);
+
+  const sinceHelper = (performance.now() - helperShownAt) / 1000;
+  planeHelper.material.opacity = slice.isOn() ? Math.max(0, 0.55 * (1 - Math.max(0, sinceHelper - 1.2) / 1.2)) : 0;
+  planeHelper.visible = planeHelper.material.opacity > 0.01;
 
   if (flight) {
     flight.t = Math.min(flight.t + 1 / 70, 1);

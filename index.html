@@ -18,14 +18,45 @@
     <canvas id="scene" aria-label="A 3D model of the human heart. Drag to turn it, click a part to learn about it."></canvas>
 
     <div id="loading" role="status">
+      <svg class="loading-trace" viewBox="0 0 240 60" aria-hidden="true">
+        <path d="M0 34 H40 Q46 34 48 30 Q50 26 52 34 H62 L66 38 L72 8 L78 48 L82 34 H96 Q104 34 108 26 Q112 20 116 34 H240" />
+      </svg>
       <p>Gathering the heart</p>
       <span id="loading-pct">0%</span>
     </div>
 
     <header class="title">
       <h1>Atrium</h1>
-      <button id="browser-toggle" type="button" aria-expanded="false" aria-controls="browser">Parts</button>
+      <nav class="tools" aria-label="Tools">
+        <button id="browser-toggle" type="button" aria-expanded="false" aria-controls="browser">Parts</button>
+        <button id="layers-toggle" type="button" aria-expanded="false" aria-controls="layers">Layers</button>
+        <button id="slice-toggle" type="button" aria-expanded="false" aria-controls="slice">Slice</button>
+      </nav>
     </header>
+
+    <section id="layers" class="tool-card" aria-label="Layers" aria-hidden="true">
+      <ul></ul>
+      <button class="layers-reset" type="button" hidden>Show everything</button>
+      <p class="tool-note">The atlas model has no separate outer or inner lining; each wall is a single piece.</p>
+    </section>
+
+    <section id="slice" class="tool-card" aria-label="Slice" aria-hidden="true">
+      <button class="slice-toggle" type="button" aria-pressed="false">Cut the heart</button>
+      <div class="slice-controls inactive">
+        <div class="slice-dirs" role="group" aria-label="Direction of the cut">
+          <button type="button" data-dir="front" aria-pressed="false">Front</button>
+          <button type="button" data-dir="top" aria-pressed="false">Top</button>
+          <button type="button" data-dir="side" aria-pressed="false">Side</button>
+          <button type="button" data-dir="view" aria-pressed="false">As I see it</button>
+        </div>
+        <label class="slice-depth-label">
+          <span>Depth</span>
+          <input class="slice-depth" type="range" min="0" max="100" value="50" />
+        </label>
+        <button class="slice-flip" type="button">Show the other half</button>
+      </div>
+      <p class="tool-note">Lighter colour marks where the knife passes through tissue.</p>
+    </section>
 
     <nav id="browser" aria-label="Parts of the heart" aria-hidden="true">
       <label class="search">
@@ -64,6 +95,41 @@
     </div>
 
     <p id="hint"></p>
+
+    <section id="beat" aria-label="Heartbeat">
+      <p class="beat-phase"><span class="phase-name"></span><span class="phase-sub"></span></p>
+      <div class="beat-timeline" aria-hidden="true">
+        <div class="beat-segments"></div>
+        <span class="beat-dot"></span>
+      </div>
+      <div class="beat-controls">
+        <button class="beat-play" type="button"></button>
+        <label class="beat-field">
+          <span>Speed</span>
+          <input class="beat-speed" type="range" min="0" max="100" value="0" />
+          <output class="beat-speed-out"></output>
+        </label>
+        <label class="beat-field">
+          <span>Heart rate</span>
+          <input class="beat-rate" type="range" min="40" max="180" value="65" />
+          <output class="beat-rate-out"></output>
+        </label>
+        <button class="beat-about" type="button" aria-expanded="false" aria-controls="beat-note">How true is this?</button>
+      </div>
+    </section>
+
+    <div id="beat-note" class="tool-card-like" hidden>
+      <p>
+        The atlas heart is one still shape. Atrium bends it with a simplified motion: the atria squeeze first,
+        then the ventricles squeeze inward, twist slightly and pull the valve plane down toward the apex,
+        and the big arteries swell as blood rushes in.
+      </p>
+      <p>
+        Timing follows typical adult values: about 0.3 seconds of squeezing at 75 beats a minute. As the rate
+        rises, the resting part of each beat shortens much more than the squeeze. Real walls also thicken as
+        they contract, which this model cannot show. The valves will open and close in the next step.
+      </p>
+    </div>
 
     <footer class="credits-wrap">
       <button id="credits-toggle" type="button" aria-expanded="false" aria-controls="credits">Credits</button>

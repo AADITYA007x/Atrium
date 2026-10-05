@@ -14,7 +14,8 @@ Atrium is an educational project. It does not give medical advice.
 
 Changes made for Atrium: the 14 heart parts and 30 vessels around the heart were combined into one
 file; the descending aorta and inferior vena cava were trimmed; the model was recentred and scaled;
-original materials were replaced with Atrium's colours; the file was compressed (meshopt). Part names
+original materials were replaced with Atrium's colours; the right atrium mesh was repaired
+(duplicate and degenerate triangles removed, faces turned outward) so slicing shades it correctly; the file was compressed (meshopt). Part names
 were made readable. See tools/build_model.py.
 
 ## Fonts

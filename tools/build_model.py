@@ -6,7 +6,9 @@ Inputs (Human Reference Atlas, CC BY 4.0), from github.com/hubmapconsortium/ccf-
   VH_M_Blood_Vasculature.glb
 Steps: pick the heart parts and the vessels around the heart, trim the descending aorta (below y=0.50 m)
 and inferior vena cava (below y=0.425 m), drop original materials, centre on the heart, scale x20,
-export with normals, then compress:
+repair the right atrium (merge vertices, drop degenerate faces, orient faces outward by
+ray parity, see fix_ra.py), make every mesh face outward, export with normals, then compress:
+  python build_model.py atrium-raw.glb --parity
   npx @gltf-transform/cli meshopt atrium-raw.glb atrium-heart.glb
 Requires: pip install trimesh
 """
@@ -60,8 +62,17 @@ vessels={
  'oblique_vein_of_left_atrium':('VH_M_oblique_vein_of_left_atrium',None),
  'coronary_sinus':('VH_M_coronary_sinus',None),
 }
+import sys
+from fix_ra import orient_by_parity
+PARITY='--parity' in sys.argv
 meshes={}
 for k,n in heart.items(): meshes[k]=g(H,n)
+ra=meshes['right_atrium']
+if PARITY:
+    print('RA flipped', orient_by_parity(ra))
+else:
+    ra.merge_vertices(digits_vertex=6)
+    ra.update_faces(ra.nondegenerate_faces(height=1e-9)); ra.update_faces(ra.unique_faces()); ra.remove_unreferenced_vertices()
 for k,(n,ymin) in vessels.items():
     m=g(V,n)
     if ymin is not None:
@@ -73,8 +84,11 @@ center=(hb.min(0)+hb.max(0))/2
 S=20.0
 sc=trimesh.Scene()
 for k,m in meshes.items():
-    m.merge_vertices(); m.apply_translation(-center); m.apply_scale(S); m.fix_normals() if False else None; _=m.vertex_normals
+    m.merge_vertices()
+    outward=(m.area_faces*((m.triangles_center-m.centroid)*m.face_normals).sum(1)).sum()
+    if outward<0: m.invert(); print('inverted',k)
+    m.apply_translation(-center); m.apply_scale(S); m.fix_normals() if False else None; _=m.vertex_normals
     sc.add_geometry(m,node_name=k,geom_name=k)
 print('center',center,'bounds',sc.bounds)
 print('tris',sum(len(m.faces) for m in meshes.values()))
-sc.export('atrium-raw.glb',include_normals=True)
+sc.export(sys.argv[1] if len(sys.argv)>1 and not sys.argv[1].startswith('--') else 'atrium-raw.glb',include_normals=True)
