@@ -31,8 +31,18 @@
         <button id="browser-toggle" type="button" aria-expanded="false" aria-controls="browser">Parts</button>
         <button id="layers-toggle" type="button" aria-expanded="false" aria-controls="layers">Layers</button>
         <button id="slice-toggle" type="button" aria-expanded="false" aria-controls="slice">Slice</button>
+        <button id="travel-toggle" type="button" aria-expanded="false" aria-controls="travel">Travel</button>
       </nav>
     </header>
+
+    <section id="travel" aria-label="Travel inside" aria-hidden="true" aria-live="polite">
+      <p class="travel-where"></p>
+      <h2 class="travel-name"></h2>
+      <p class="travel-text"></p>
+      <p class="travel-wait"></p>
+      <ul class="travel-choices"></ul>
+      <button class="travel-leave" type="button">Leave the heart</button>
+    </section>
 
     <section id="layers" class="tool-card" aria-label="Layers" aria-hidden="true">
       <ul></ul>
@@ -146,6 +156,12 @@
         The ECG is a textbook-shaped trace generated from the beat's timing, not a recording; real ECGs differ
         from person to person and from lead to lead. The atria also recover electrically, but that small wave is
         hidden inside the QRS. The conduction system is drawn by Atrium, not taken from the atlas.
+      </p>
+      <p>
+        In Travel, the drop follows paths Atrium works out from the atlas: the middle of each vessel and chamber.
+        It waits at each valve until it opens, just as blood must. The heart is cut open just in front of the drop
+        so you can see it; that cut is a viewing aid, not part of the anatomy. The lungs and body are only suggested,
+        and the drop moves far more slowly than real blood.
       </p>
       <p>
         The heart sounds are made by Atrium, not recorded. The first sound, lub, is mostly the mitral and

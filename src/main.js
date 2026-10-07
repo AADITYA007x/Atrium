@@ -13,6 +13,7 @@ import { createSound } from './sound.js';
 import { buildValves } from './valves.js';
 import { createFlow } from './flow.js';
 import { buildConduction } from './elec.js';
+import { createTravel } from './travel.js';
 import './style.css';
 
 const canvas = document.getElementById('scene');
@@ -168,6 +169,8 @@ function updateViewShiftTarget() {
     ty += dock.el.offsetHeight / 2;
     if (panel.el.classList.contains('open')) tx += panel.el.offsetWidth / 2;
     if (browser.isOpen()) tx -= document.getElementById('browser').offsetWidth / 2;
+    const travelCard = document.getElementById('travel');
+    if (travelCard.classList.contains('open')) tx -= (travelCard.offsetLeft + travelCard.offsetWidth) / 2;
   }
   viewShift.tx = THREE.MathUtils.clamp(tx, -w * 0.3, w * 0.3);
   viewShift.ty = THREE.MathUtils.clamp(ty, -h * 0.3, h * 0.3);
@@ -211,13 +214,14 @@ const FLOW_SEE_THROUGH = ['chamber', 'wall', 'vessel'];
 const meshById = new Map();
 let hovered = null;
 let selected = null;
+let travelMesh = null;
 
 const HOVER_GLOW = 0.45;
 const SELECT_GLOW = 1;
 
 function refreshGlow() {
   for (const m of meshes) {
-    m.userData.glowTarget = m === selected ? SELECT_GLOW : m === hovered ? HOVER_GLOW : 0;
+    m.userData.glowTarget = m === selected ? SELECT_GLOW : m === hovered ? HOVER_GLOW : m === travelMesh ? 0.3 : 0;
   }
 }
 
@@ -288,6 +292,7 @@ function openTool(name) {
     t.btn.setAttribute('aria-expanded', String(open));
   }
   if (name && browser.isOpen()) browser.close();
+  if (name && travel.isOpen() && !travel.isActive()) travel.leave();
   updateViewShiftTarget();
 }
 function closeTools() {
@@ -337,6 +342,33 @@ const slice = createSlice({
   },
 });
 
+
+// Travel inside
+const travel = createTravel({
+  camera,
+  controls,
+  scene,
+  clipPlane,
+  reduceMotion,
+  onPlace: (id) => {
+    travelMesh = id ? meshById.get(id) ?? null : null;
+    refreshGlow();
+  },
+  onEnter: () => {
+    if (selected) deselect();
+    if (browser.isOpen()) browser.close();
+    closeTools();
+    stopIdleSpin();
+    flight = null;
+    hideLabel();
+    setTimeout(updateViewShiftTarget, 50);
+  },
+  onExit: () => {
+    slice.refresh();
+    setTimeout(updateViewShiftTarget, 50);
+    flyHome();
+  },
+});
 
 uiReady = true;
 requestAnimationFrame(updateViewShiftTarget);
@@ -418,6 +450,7 @@ loadHeart('/models/atrium-heart.glb', {
     }
     slice.refresh();
     refreshFade();
+    travel.build({ meshById, valveSet });
     loadingEl.classList.add('done');
     document.body.classList.add('ready');
   })
@@ -468,6 +501,7 @@ function hideLabel() {
 }
 
 let dragging = false;
+let tapLabelTimer = null;
 let downAt = null;
 
 canvas.addEventListener('pointerdown', (e) => {
@@ -492,6 +526,14 @@ canvas.addEventListener('pointerup', (e) => {
   downAt = null;
   if (moved > 6 || !quick || e.button > 0) return;
   const mesh = pick(e.clientX, e.clientY);
+  if (travel.isActive()) {
+    if (mesh) {
+      showLabel(mesh, e.clientX, e.clientY);
+      clearTimeout(tapLabelTimer);
+      tapLabelTimer = setTimeout(hideLabel, 2600);
+    }
+    return;
+  }
   if (mesh) select(mesh.userData.partId);
   else if (selected) deselect();
   if (e.pointerType === 'mouse') pointerDirty = true;
@@ -503,13 +545,14 @@ canvas.addEventListener('pointerleave', () => {
 });
 
 canvas.addEventListener('dblclick', (e) => {
-  if (!pick(e.clientX, e.clientY)) flyHome();
+  if (!travel.isActive() && !pick(e.clientX, e.clientY)) flyHome();
 });
 
 window.addEventListener('keydown', (e) => {
   const typing = e.target instanceof HTMLInputElement;
   if (e.key === 'Escape') {
-    if (toolsOpen()) closeTools();
+    if (travel.isOpen()) travel.leave();
+    else if (toolsOpen()) closeTools();
     else if (browser.isOpen() && (typing || !selected)) browser.close();
     else if (selected) deselect();
     else if (browser.isOpen()) browser.close();
@@ -545,6 +588,7 @@ renderer.setAnimationLoop(() => {
   valveSet?.update(info.av, info.sl);
   const simDt = beat.state.playing ? Math.min(dt, 0.1) / beat.state.slow : 0;
   flow?.update(simDt, info, camera, { top: 90, bottom: dock.el.getBoundingClientRect().top - 16 });
+  const travelDriving = travel.update(dt, info, beat.state.playing, beat.state.slow);
   const elecInfo = conduction?.update(beat.state, elecWanted);
   dock.update(info, elecInfo);
   rim.intensity = RIM_BASE * (1 + 0.45 * info.v + 0.2 * info.a);
@@ -597,6 +641,6 @@ renderer.setAnimationLoop(() => {
     else hideLabel();
   }
 
-  controls.update();
+  if (!travelDriving) controls.update();
   renderer.render(scene, camera);
 });
