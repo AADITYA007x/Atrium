@@ -76,3 +76,12 @@ export const PARTS = {
   oblique_vein_of_left_atrium: { name: 'Oblique vein of the left atrium', group: 'cardiacVein', blood: 'poor', aliases: ['vein of Marshall'] },
   coronary_sinus: { name: 'Coronary sinus', group: 'cardiacVein', blood: 'poor' },
 };
+
+// "the mitral valve", keeping names that start with a person's name capitalised
+export function theName(name) {
+  const keepCapital = /^(Purkinje)\b/.test(name);
+  return `the ${keepCapital ? name : name.charAt(0).toLowerCase() + name.slice(1)}`;
+}
+
+// Parts that are many things at once speak as "we"
+export const PLURAL_PARTS = ['chordae_tendineae', 'internodal_pathways', 'bundle_branches', 'purkinje_fibres'];

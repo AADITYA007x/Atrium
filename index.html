@@ -32,6 +32,7 @@
         <button id="layers-toggle" type="button" aria-expanded="false" aria-controls="layers">Layers</button>
         <button id="slice-toggle" type="button" aria-expanded="false" aria-controls="slice">Slice</button>
         <button id="travel-toggle" type="button" aria-expanded="false" aria-controls="travel">Travel</button>
+        <button id="talk-toggle" type="button" aria-expanded="false" aria-controls="talk">Talk</button>
       </nav>
     </header>
 
@@ -84,6 +85,7 @@
         <p class="panel-kind"></p>
         <p class="panel-does"></p>
         <p class="panel-fact"></p>
+        <button class="panel-talk" type="button"></button>
         <div class="panel-connects">
           <h3>Connects to</h3>
           <ul></ul>
@@ -97,6 +99,26 @@
           <ul></ul>
         </div>
       </div>
+    </aside>
+
+    <aside id="talk" aria-hidden="true" aria-labelledby="talk-title">
+      <button class="talk-close" type="button" aria-label="Close">&times;</button>
+      <header class="talk-head">
+        <p class="talk-to">Talk to</p>
+        <h2 id="talk-title"></h2>
+        <div class="talk-who" role="group" aria-label="Who to talk to"></div>
+      </header>
+      <div class="talk-log" aria-live="polite"></div>
+      <ul class="talk-starters"></ul>
+      <form class="talk-form">
+        <label class="visually-hidden" for="talk-input">Your question</label>
+        <textarea id="talk-input" rows="1" maxlength="600" autocomplete="off"></textarea>
+        <button type="submit" aria-label="Send"></button>
+      </form>
+      <p class="talk-note">
+        Answers are written by an AI model (Google Gemini) told to use only Atrium&rsquo;s notes. It can still be
+        wrong. Educational only, never medical advice.
+      </p>
     </aside>
 
     <div id="label" aria-hidden="true">

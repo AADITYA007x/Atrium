@@ -1,7 +1,7 @@
-import { PARTS, GROUPS } from './parts.js';
+import { PARTS, GROUPS, theName } from './parts.js';
 import { FACTS, SOURCES } from './facts.js';
 
-export function createPanel({ onSelect, onClose }) {
+export function createPanel({ onSelect, onClose, onTalk }) {
   const el = document.getElementById('panel');
   const nameEl = el.querySelector('#panel-name');
   const kindEl = el.querySelector('.panel-kind');
@@ -12,6 +12,9 @@ export function createPanel({ onSelect, onClose }) {
   const noteText = noteWrap.querySelector('p');
   const sourcesList = el.querySelector('.panel-sources ul');
   const body = el.querySelector('.panel-body');
+  const talkBtn = el.querySelector('.panel-talk');
+  let currentId = null;
+  talkBtn.addEventListener('click', () => onTalk?.(currentId));
 
   el.querySelector('.panel-close').addEventListener('click', () => onClose());
 
@@ -26,6 +29,8 @@ export function createPanel({ onSelect, onClose }) {
     kindEl.dataset.blood = part.blood ?? '';
     doesEl.textContent = facts.does;
     factEl.textContent = facts.fact;
+    currentId = id;
+    talkBtn.textContent = `Talk to ${theName(part.name)}`;
 
     connectsList.replaceChildren(
       ...facts.connects.map((cid) => {

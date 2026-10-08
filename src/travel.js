@@ -652,7 +652,7 @@ export function createTravel({ camera, controls, scene, clipPlane, reduceMotion,
     // Cut the heart open just in front of the drop, facing the camera; no cut when the drop is far outside
     const n = tmp.copy(viewDir).negate();
     const far = dropPos.distanceTo(centre) > 2.4;
-    const cutTarget = far ? n.dot(centre) - 4 : n.dot(dropPos) - 0.2;
+    const cutTarget = far ? n.dot(centre) - 4 : n.dot(dropPos) - 0.05;
     cut += (cutTarget - cut) * (reduceMotion || cut < -1e5 ? 1 : 1 - Math.exp(-dt * 4));
     clipPlane.normal.copy(n);
     clipPlane.constant = -cut;

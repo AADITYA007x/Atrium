@@ -14,6 +14,7 @@ import { buildValves } from './valves.js';
 import { createFlow } from './flow.js';
 import { buildConduction } from './elec.js';
 import { createTravel } from './travel.js';
+import { createTalk } from './talk.js';
 import './style.css';
 
 const canvas = document.getElementById('scene');
@@ -162,12 +163,14 @@ function updateViewShiftTarget() {
   let ty = 0;
   if (narrow()) {
     if (panel.el.classList.contains('open')) ty = (panel.el.offsetHeight || h * 0.5) / 2;
+    if (talk.isOpen()) ty = (talk.el.offsetHeight || h * 0.6) / 2;
     const card = Object.values(tools).find((t) => t.card.classList.contains('open'))?.card;
     if (card) ty -= (card.offsetTop + card.offsetHeight) / 2.5;
     else if (!panel.el.classList.contains('open')) ty += dock.el.offsetHeight / 2;
   } else {
-    ty += dock.el.offsetHeight / 2;
+    if (!talk.isOpen()) ty += dock.el.offsetHeight / 2;
     if (panel.el.classList.contains('open')) tx += panel.el.offsetWidth / 2;
+    if (talk.isOpen()) tx += talk.el.offsetWidth / 2;
     if (browser.isOpen()) tx -= document.getElementById('browser').offsetWidth / 2;
     const travelCard = document.getElementById('travel');
     if (travelCard.classList.contains('open')) tx -= (travelCard.offsetLeft + travelCard.offsetWidth) / 2;
@@ -246,6 +249,23 @@ function refreshFade() {
 const panel = createPanel({
   onSelect: (id, opts) => select(id, opts),
   onClose: () => deselect(),
+  onTalk: (id) => talk.open(id),
+});
+
+const talk = createTalk({
+  getSelectedId: () => selected?.userData.partId ?? null,
+  onOpen: () => {
+    panel.hide();
+    if (browser.isOpen()) browser.close();
+    closeTools();
+    hideLabel();
+    stopIdleSpin();
+    setTimeout(updateViewShiftTarget, 30);
+  },
+  onClose: () => {
+    if (selected) panel.show(selected.userData.partId);
+    setTimeout(updateViewShiftTarget, 30);
+  },
 });
 
 const browser = createBrowser({
@@ -381,6 +401,7 @@ function select(id, { fly = false, fromList = false } = {}) {
   if (mesh.userData.part?.group === 'conduction' && !elecWanted) dock.setElec(true);
   refreshGlow();
   refreshFade();
+  if (talk.isOpen()) talk.close();
   panel.show(id);
   browser.setCurrent(id);
   if (fromList && narrow()) browser.close();
@@ -549,9 +570,10 @@ canvas.addEventListener('dblclick', (e) => {
 });
 
 window.addEventListener('keydown', (e) => {
-  const typing = e.target instanceof HTMLInputElement;
+  const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
   if (e.key === 'Escape') {
-    if (travel.isOpen()) travel.leave();
+    if (talk.isOpen()) talk.close();
+    else if (travel.isOpen()) travel.leave();
     else if (toolsOpen()) closeTools();
     else if (browser.isOpen() && (typing || !selected)) browser.close();
     else if (selected) deselect();
