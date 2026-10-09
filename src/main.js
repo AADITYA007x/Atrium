@@ -15,6 +15,7 @@ import { createFlow } from './flow.js';
 import { buildConduction } from './elec.js';
 import { createTravel } from './travel.js';
 import { createTalk } from './talk.js';
+import { createTour } from './tour.js';
 import './style.css';
 
 const canvas = document.getElementById('scene');
@@ -164,7 +165,9 @@ function updateViewShiftTarget() {
   if (narrow()) {
     if (panel.el.classList.contains('open')) ty = (panel.el.offsetHeight || h * 0.5) / 2;
     if (talk.isOpen()) ty = (talk.el.offsetHeight || h * 0.6) / 2;
-    const card = Object.values(tools).find((t) => t.card.classList.contains('open'))?.card;
+    const card =
+      Object.values(tools).find((t) => t.card.classList.contains('open'))?.card ??
+      [document.getElementById('tour'), document.getElementById('travel')].find((c) => c.classList.contains('open'));
     if (card) ty -= (card.offsetTop + card.offsetHeight) / 2.5;
     else if (!panel.el.classList.contains('open')) ty += dock.el.offsetHeight / 2;
   } else {
@@ -172,8 +175,9 @@ function updateViewShiftTarget() {
     if (panel.el.classList.contains('open')) tx += panel.el.offsetWidth / 2;
     if (talk.isOpen()) tx += talk.el.offsetWidth / 2;
     if (browser.isOpen()) tx -= document.getElementById('browser').offsetWidth / 2;
-    const travelCard = document.getElementById('travel');
-    if (travelCard.classList.contains('open')) tx -= (travelCard.offsetLeft + travelCard.offsetWidth) / 2;
+    for (const card of [document.getElementById('travel'), document.getElementById('tour')]) {
+      if (card.classList.contains('open')) tx -= (card.offsetLeft + card.offsetWidth) / 2;
+    }
   }
   viewShift.tx = THREE.MathUtils.clamp(tx, -w * 0.3, w * 0.3);
   viewShift.ty = THREE.MathUtils.clamp(ty, -h * 0.3, h * 0.3);
@@ -218,13 +222,14 @@ const meshById = new Map();
 let hovered = null;
 let selected = null;
 let travelMesh = null;
+let focusMeshes = new Set(); // parts the tour is pointing at
 
 const HOVER_GLOW = 0.45;
 const SELECT_GLOW = 1;
 
 function refreshGlow() {
   for (const m of meshes) {
-    m.userData.glowTarget = m === selected ? SELECT_GLOW : m === hovered ? HOVER_GLOW : m === travelMesh ? 0.3 : 0;
+    m.userData.glowTarget = m === selected ? SELECT_GLOW : m === hovered ? HOVER_GLOW : m === travelMesh ? 0.3 : focusMeshes.has(m) ? 0.7 : 0;
   }
 }
 
@@ -255,6 +260,7 @@ const panel = createPanel({
 const talk = createTalk({
   getSelectedId: () => selected?.userData.partId ?? null,
   onOpen: () => {
+    tour.stop();
     panel.hide();
     if (browser.isOpen()) browser.close();
     closeTools();
@@ -375,6 +381,7 @@ const travel = createTravel({
     refreshGlow();
   },
   onEnter: () => {
+    tour.stop();
     if (selected) deselect();
     if (browser.isOpen()) browser.close();
     closeTools();
@@ -389,6 +396,50 @@ const travel = createTravel({
     flyHome();
   },
 });
+
+// Guided tour
+const tour = createTour({
+  beat,
+  dock,
+  slice,
+  setFlow: (on) => dock.setFlow(on),
+  setElec: (on) => dock.setElec(on),
+  setFocus: (ids) => {
+    focusMeshes = new Set(ids.map((id) => meshById.get(id)).filter(Boolean));
+    refreshGlow();
+  },
+  flyView: (view) => {
+    if (view === 'home' || !view) return flyHome();
+    const dir = new THREE.Vector3(...view.dir).normalize();
+    const target = HOME_TARGET.clone();
+    flyTo(target, target.clone().addScaledVector(dir, homeDistance() * (view.zoom ?? 1)));
+  },
+  onStart: () => {
+    if (travel.isOpen()) travel.leave();
+    if (talk.isOpen()) talk.close();
+    if (selected) deselect();
+    if (browser.isOpen()) browser.close();
+    closeTools();
+    hideLabel();
+    stopIdleSpin();
+    setTimeout(updateViewShiftTarget, 30);
+  },
+  onEnd: () => {
+    flyHome();
+    setTimeout(updateViewShiftTarget, 30);
+  },
+});
+
+// Opening screen
+function begin({ withSound, withTour }) {
+  loadingEl.classList.add('done');
+  document.body.classList.add('begun');
+  if (withSound) sound.setSound(true);
+  if (withTour) tour.start();
+}
+loadingEl.querySelector('.open-sound').addEventListener('click', () => begin({ withSound: true }));
+loadingEl.querySelector('.open-silent').addEventListener('click', () => begin({ withSound: false }));
+loadingEl.querySelector('.open-tour').addEventListener('click', () => begin({ withSound: false, withTour: true }));
 
 uiReady = true;
 requestAnimationFrame(updateViewShiftTarget);
@@ -472,14 +523,16 @@ loadHeart('/models/atrium-heart.glb', {
     slice.refresh();
     refreshFade();
     travel.build({ meshById, valveSet });
-    loadingEl.classList.add('done');
     document.body.classList.add('ready');
+    loadingEl.querySelector('.open-status').hidden = true;
+    loadingEl.querySelector('.open-choices').hidden = false;
+    loadingEl.querySelector('.open-tour').hidden = false;
+    loadingEl.querySelector('.open-sound').focus({ preventScroll: true });
   })
   .catch((err) => {
     console.error(err);
-    loadingEl.querySelector('p').textContent =
+    loadingEl.querySelector('.open-status').textContent =
       'The heart model could not load. Check that public/models/atrium-heart.glb exists, then reload.';
-    loadingPct.textContent = '';
   });
 
 // Picking
@@ -571,8 +624,10 @@ canvas.addEventListener('dblclick', (e) => {
 
 window.addEventListener('keydown', (e) => {
   const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+  if (!typing && tour.key(e)) return;
   if (e.key === 'Escape') {
-    if (talk.isOpen()) talk.close();
+    if (tour.isActive()) tour.stop();
+    else if (talk.isOpen()) talk.close();
     else if (travel.isOpen()) travel.leave();
     else if (toolsOpen()) closeTools();
     else if (browser.isOpen() && (typing || !selected)) browser.close();
@@ -604,6 +659,7 @@ renderer.setAnimationLoop(() => {
   const dt = clock.getDelta();
   const ease = reduceMotion ? 1 : 0.12;
 
+  tour.update();
   const prevBeatT = beat.state.t;
   const info = beat.update(dt);
   sound.update(prevBeatT, info.t, beat.state.times, beat.state.playing, beat.state.slow);

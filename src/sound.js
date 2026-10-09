@@ -279,6 +279,8 @@ export function createSound() {
   render();
 
   return {
+    setSound,
+    isOn: () => soundOn,
     // Called every frame with the beat time before and after this frame
     update(prevT, t, times, playing, slow) {
       if (!soundOn || !playing || !ctx || ctx.state !== 'running') return;

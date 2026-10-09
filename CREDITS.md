@@ -18,6 +18,11 @@ original materials were replaced with Atrium's colours; the right atrium mesh wa
 (duplicate and degenerate triangles removed, faces turned outward) so slicing shades it correctly; the file was compressed (meshopt). Part names
 were made readable. See tools/build_model.py.
 
+## Link preview image
+
+public/og-image.jpg and public/apple-touch-icon.png are renders of Atrium's own heart scene
+(made from the Human Reference Atlas models credited above), with text set in Cormorant Garamond.
+
 ## Fonts
 
 - Cormorant Garamond by Christian Thalmann, SIL Open Font License 1.1, via Google Fonts.

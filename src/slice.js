@@ -100,5 +100,12 @@ export function createSlice({ plane, getBounds, getViewDirection, onChange, onAi
   return {
     isOn: () => state.on,
     refresh: apply,
+    // Set the cut from code (used by the tour); the camera is left alone
+    set({ on = false, dir = 'front', t = 0.5, flipped = false } = {}) {
+      Object.assign(state, { on, dir, t, flipped });
+      depth.value = String(Math.round(t * 100));
+      render();
+      apply();
+    },
   };
 }

@@ -5,8 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0d0809" />
     <title>Atrium</title>
-    <meta name="description" content="Atrium: a living, beating 3D human heart you can explore." />
+    <meta name="description" content="A living, beating 3D human heart. Turn it, cut it open, follow a drop of blood, watch the electrical spark, hear the lub-dub, and ask it questions." />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="canonical" href="https://atrium-heart.aadityasah7112006.workers.dev/" />
+
+    <!-- Link previews (WhatsApp, iMessage, Slack, social sites) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Atrium" />
+    <meta property="og:title" content="Atrium: a living heart to explore" />
+    <meta property="og:description" content="A beating 3D human heart. Cut it open, follow a drop of blood, hear the lub-dub, and ask it questions." />
+    <meta property="og:url" content="https://atrium-heart.aadityasah7112006.workers.dev/" />
+    <meta property="og:image" content="https://atrium-heart.aadityasah7112006.workers.dev/og-image.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="A glowing 3D human heart with blue and red vessels on a dark background, beside the word Atrium." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Atrium: a living heart to explore" />
+    <meta name="twitter:description" content="A beating 3D human heart. Cut it open, follow a drop of blood, hear the lub-dub, and ask it questions." />
+    <meta name="twitter:image" content="https://atrium-heart.aadityasah7112006.workers.dev/og-image.jpg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -17,12 +35,19 @@
   <body>
     <canvas id="scene" aria-label="A 3D model of the human heart. Drag to turn it, click a part to learn about it."></canvas>
 
-    <div id="loading" role="status">
+    <div id="loading" role="dialog" aria-modal="true" aria-labelledby="open-title">
       <svg class="loading-trace" viewBox="0 0 240 60" aria-hidden="true">
         <path d="M0 34 H40 Q46 34 48 30 Q50 26 52 34 H62 L66 38 L72 8 L78 48 L82 34 H96 Q104 34 108 26 Q112 20 116 34 H240" />
       </svg>
-      <p>Gathering the heart</p>
-      <span id="loading-pct">0%</span>
+      <p id="open-title" class="open-title">Atrium</p>
+      <p class="open-line">A living human heart, beating, for you to explore.</p>
+      <p class="open-status" role="status">Gathering the heart <span id="loading-pct">0%</span></p>
+      <div class="open-choices" hidden>
+        <button class="open-sound" type="button">Begin with sound</button>
+        <button class="open-silent" type="button">Begin in silence</button>
+      </div>
+      <button class="open-tour" type="button" hidden>or start with the tour: one heartbeat in ten steps</button>
+      <p class="open-note">Headphones bring out the heartbeat. Educational only, never medical advice.</p>
     </div>
 
     <header class="title">
@@ -33,8 +58,21 @@
         <button id="slice-toggle" type="button" aria-expanded="false" aria-controls="slice">Slice</button>
         <button id="travel-toggle" type="button" aria-expanded="false" aria-controls="travel">Travel</button>
         <button id="talk-toggle" type="button" aria-expanded="false" aria-controls="talk">Talk</button>
+        <button id="tour-toggle" type="button" aria-expanded="false" aria-controls="tour">Tour</button>
       </nav>
     </header>
+
+    <section id="tour" aria-label="One heartbeat in ten steps" aria-hidden="true" aria-live="polite">
+      <p class="tour-head"><span>One heartbeat in ten steps</span><span class="tour-count"></span></p>
+      <div class="tour-dots"></div>
+      <h2 class="tour-title"></h2>
+      <p class="tour-text"></p>
+      <div class="tour-nav">
+        <button class="tour-back" type="button">Back</button>
+        <button class="tour-next" type="button">Next</button>
+      </div>
+      <button class="tour-end" type="button">End the tour</button>
+    </section>
 
     <section id="travel" aria-label="Travel inside" aria-hidden="true" aria-live="polite">
       <p class="travel-where"></p>

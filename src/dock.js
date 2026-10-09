@@ -121,7 +121,7 @@ export function createDock(beat, { onFlow, onElec } = {}) {
     note.hidden = !open;
     aboutBtn.setAttribute('aria-expanded', String(open));
   });
-  toggle(flowBtn, 'Hide blood flow', 'Show blood flow', 'flow-on', onFlow);
+  const setFlow = toggle(flowBtn, 'Hide blood flow', 'Show blood flow', 'flow-on', onFlow);
   const setElec = toggle(elecBtn, 'Hide electrical signal', 'Show electrical signal', 'elec-on', (on) => {
     elecOn = on;
     onElec?.(on);
@@ -227,6 +227,21 @@ export function createDock(beat, { onFlow, onElec } = {}) {
       el.dataset.phase = useElec ? `e-${current.id}` : current.id;
     },
     setElec: (on) => setElec(on),
+    setFlow: (on) => setFlow(on),
+    isFlowOn: () => flowBtn.getAttribute('aria-pressed') === 'true',
+    // Speed slider position from 0 (real time) to 100 (20 times slower)
+    setSpeed(v) {
+      speed.value = String(v);
+      renderSpeed();
+    },
+    setRate(bpm) {
+      rate.value = String(bpm);
+      renderRate();
+    },
+    setPlaying(p) {
+      beat.setPlaying(p);
+      renderPlay();
+    },
     isElecOn: () => elecOn,
     el,
   };

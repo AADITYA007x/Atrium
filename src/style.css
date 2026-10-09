@@ -105,22 +105,32 @@ body.ready #scene {
   box-shadow: 0 0 7px var(--venous);
 }
 
-/* Loading */
+/* Opening screen: shows while the heart loads, then offers the way in */
 #loading {
   position: fixed;
   inset: 0;
-  display: grid;
-  place-content: center;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem var(--edge);
   text-align: center;
-  gap: 0.4rem;
-  z-index: 5;
-  transition: opacity 1.2s ease;
+  background: radial-gradient(ellipse at 50% 50%, rgba(13, 8, 9, 0.55), rgba(13, 8, 9, 0.92) 70%);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  transition: opacity 1.4s ease, visibility 0s linear 1.4s;
+}
+
+#loading.done {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .loading-trace {
   width: min(15rem, 60vw);
-  justify-self: center;
-  margin-bottom: 0.6rem;
+  margin-bottom: 0.4rem;
 }
 
 .loading-trace path {
@@ -143,22 +153,112 @@ body.ready #scene {
 
 #loading p {
   margin: 0;
-  font-size: 1.4rem;
+}
+
+.open-title {
+  font-size: clamp(3.2rem, 9vw, 5.5rem);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.open-line {
+  margin-top: 0.6rem !important;
+  font-size: clamp(1.2rem, 2.6vw, 1.5rem);
   font-style: italic;
   color: var(--ink-soft);
-  max-width: 24rem;
-  padding: 0 1.5rem;
+  max-width: 26rem;
+}
+
+.open-status {
+  margin-top: 2.2rem !important;
+  min-height: 3rem;
+  font-size: 1.15rem;
+  font-style: italic;
+  color: var(--ink-faint);
 }
 
 #loading-pct {
   color: var(--gold);
-  font-size: 1.1rem;
+  font-style: normal;
   font-variant-numeric: tabular-nums;
 }
 
-#loading.done {
-  opacity: 0;
-  pointer-events: none;
+.open-choices {
+  margin-top: 2.2rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.8rem 1.1rem;
+  animation: arrive 1.2s ease both;
+}
+
+.open-choices[hidden],
+.open-tour[hidden] {
+  display: none;
+}
+
+.open-choices button {
+  font: inherit;
+  font-size: 1.25rem;
+  padding: 0.55rem 1.5rem 0.65rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+.open-sound {
+  color: var(--bg);
+  background: var(--gold);
+  border: 1px solid var(--gold);
+}
+
+.open-sound:hover {
+  background: #e7c886;
+}
+
+.open-silent {
+  color: var(--ink);
+  background: none;
+  border: 1px solid rgba(234, 223, 214, 0.35);
+}
+
+.open-silent:hover {
+  border-color: var(--ink);
+}
+
+.open-tour {
+  margin-top: 1.1rem;
+  font: inherit;
+  font-size: 1.08rem;
+  font-style: italic;
+  color: var(--ink-soft);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: rgba(217, 181, 108, 0.4);
+  text-underline-offset: 4px;
+  animation: arrive 1.2s ease 0.2s both;
+}
+
+.open-tour:hover {
+  color: var(--gold);
+}
+
+.open-note {
+  position: absolute;
+  left: var(--edge);
+  right: var(--edge);
+  bottom: calc(var(--edge) + env(safe-area-inset-bottom, 0px));
+  font-size: 0.98rem;
+  font-style: italic;
+  color: var(--ink-faint);
+}
+
+@keyframes arrive {
+  from { opacity: 0; transform: translateY(0.4rem); }
+  to { opacity: 1; transform: none; }
 }
 
 /* Title and parts toggle */
@@ -374,6 +474,159 @@ body.ready #scene {
 
 .slice-flip:hover {
   color: var(--gold);
+}
+
+/* Tour card */
+#tour {
+  position: fixed;
+  top: calc(var(--edge) + 3.6rem + env(safe-area-inset-top, 0px));
+  left: var(--edge);
+  z-index: 5;
+  width: min(22rem, calc(100vw - 2 * var(--edge)));
+  max-height: calc(100vh - 14rem);
+  overflow-y: auto;
+  padding: 1rem 1.2rem 1.1rem;
+  background: var(--veil);
+  border-left: 1px solid var(--gold);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 0;
+  transform: translateY(-0.5rem);
+  visibility: hidden;
+  transition: opacity 0.5s ease, transform 0.5s ease, visibility 0s linear 0.5s;
+}
+
+#tour.open {
+  opacity: 1;
+  transform: none;
+  visibility: visible;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.tour-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0;
+  font-size: 0.98rem;
+  font-style: italic;
+  color: var(--gold);
+}
+
+.tour-count {
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.tour-dots {
+  display: flex;
+  gap: 0.3rem;
+  margin: 0.55rem 0 0.7rem;
+}
+
+.tour-dots button {
+  flex: 1;
+  height: 0.9rem;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  position: relative;
+}
+
+.tour-dots button::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(234, 223, 214, 0.18);
+  transition: background 0.3s ease;
+}
+
+.tour-dots button[aria-current="true"]::after {
+  background: var(--gold);
+  box-shadow: 0 0 8px rgba(217, 181, 108, 0.7);
+}
+
+.tour-dots button:hover::after {
+  background: rgba(217, 181, 108, 0.6);
+}
+
+.tour-title {
+  margin: 0 0 0.45rem;
+  font-weight: 400;
+  font-size: 1.75rem;
+  line-height: 1.1;
+}
+
+.tour-text {
+  margin: 0;
+  font-size: 1.12rem;
+  line-height: 1.55;
+  color: #dccbbd;
+}
+
+.tour-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.tour-nav button {
+  font: inherit;
+  font-size: 1.1rem;
+  padding: 0.3rem 1.1rem 0.4rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.tour-back {
+  color: var(--ink-soft);
+  background: none;
+  border: 1px solid rgba(234, 223, 214, 0.25);
+}
+
+.tour-back:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.tour-next {
+  color: var(--bg);
+  background: var(--gold);
+  border: 1px solid var(--gold);
+}
+
+.tour-next:hover {
+  background: #e7c886;
+}
+
+.tour-end {
+  margin-top: 0.8rem;
+  padding: 0.15rem 0;
+  font: inherit;
+  font-size: 0.98rem;
+  font-style: italic;
+  color: var(--ink-faint);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.tour-end:hover {
+  color: var(--gold);
+}
+
+body.touring #tour-toggle {
+  color: var(--gold);
+}
+
+body.ready.touring #hint {
+  opacity: 0;
 }
 
 /* Travel card */
@@ -1669,6 +1922,29 @@ body.talk-open #beat {
     top: calc(var(--edge) + 3rem + env(safe-area-inset-top, 0px));
   }
 
+  #tour {
+    top: calc(var(--edge) + 3rem + env(safe-area-inset-top, 0px));
+    width: calc(100vw - 2 * var(--edge));
+    max-height: 40vh;
+    padding: 0.8rem 1rem 0.9rem;
+  }
+
+  .tour-title {
+    font-size: 1.4rem;
+  }
+
+  .tour-text {
+    font-size: 1rem;
+  }
+
+  .tour-nav {
+    margin-top: 0.7rem;
+  }
+
+  .tour-end {
+    margin-top: 0.4rem;
+  }
+
   #travel {
     top: calc(var(--edge) + 3rem + env(safe-area-inset-top, 0px));
     width: calc(100vw - 2 * var(--edge));
@@ -1767,8 +2043,16 @@ body.talk-open .credits-wrap {
   #talk,
   #talk.open,
   #travel,
-  #travel.open {
+  #travel.open,
+  #tour,
+  #tour.open,
+  #loading {
     transition: none;
+  }
+
+  .open-choices,
+  .open-tour {
+    animation: none;
   }
 
   .talk-line.typing i {
@@ -1787,4 +2071,37 @@ body.ready.talk-open #beat {
   opacity: 0;
   pointer-events: none;
   transition-delay: 0s;
+}
+
+/* Small phones: fit six links beside the title */
+@media (max-width: 430px) {
+  .title {
+    gap: 0.6rem;
+  }
+
+  .title h1 {
+    font-size: 1.55rem;
+  }
+
+  .tools {
+    gap: 0.5rem;
+  }
+
+  .tools button {
+    font-size: 1rem;
+  }
+}
+
+/* Until the visitor begins, only the heart shows behind the opening screen */
+body:not(.begun) .title,
+body:not(.begun) #hint,
+body.ready:not(.begun) #beat,
+body:not(.begun) .credits-wrap {
+  opacity: 0;
+  pointer-events: none;
+}
+
+body.begun .title,
+body.begun .credits-wrap {
+  transition: opacity 1.2s ease 0.4s;
 }
