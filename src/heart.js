@@ -213,7 +213,7 @@ export function materialFor(part, partId, clipPlane) {
         float eD = uElecTau - vAct;
         float eFront = exp(-0.5 * (eD / 0.012) * (eD / 0.012));
         float ePlat = smoothstep(0.0, 0.03, eD) * (1.0 - smoothstep(-0.03, 0.0, uElecTau - vRep));
-        diffuseColor.a = max(diffuseColor.a, eFront * 0.6 * uElecOn);`,
+        diffuseColor.a = max(diffuseColor.a, eFront * 0.45 * uElecOn);`,
       )
       .replace(
         '#include <emissivemap_fragment>',
@@ -221,10 +221,12 @@ export function materialFor(part, partId, clipPlane) {
         float atriumFres = 1.0 - abs(dot(normalize(normal), normalize(vViewPosition)));
         atriumFres = pow(atriumFres, 3.5);
         totalEmissiveRadiance += uGlowColor * (atriumFres * 0.9 + 0.035) * uGlow;
-        totalEmissiveRadiance += uElecColor * (eFront * 1.6 + ePlat * 0.16) * uElecOn;`,
+        // The activation wave: bright at its front and along the edges, only a faint warmth behind it
+        float eRim = 0.3 + 0.7 * atriumFres;
+        totalEmissiveRadiance += uElecColor * (eFront * (0.55 + 1.1 * eRim) + ePlat * 0.05 * eRim) * uElecOn;`,
       );
   };
-  material.customProgramCacheKey = () => 'atrium-v6';
+  material.customProgramCacheKey = () => 'atrium-v7';
   return material;
 }
 

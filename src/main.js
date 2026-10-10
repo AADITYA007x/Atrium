@@ -654,9 +654,11 @@ creditsBtn.addEventListener('click', () => {
   creditsBtn.setAttribute('aria-expanded', String(open));
 });
 
-const clock = new THREE.Clock();
+const timer = new THREE.Timer();
+timer.connect(document);
 renderer.setAnimationLoop(() => {
-  const dt = clock.getDelta();
+  timer.update();
+  const dt = timer.getDelta();
   const ease = reduceMotion ? 1 : 0.12;
 
   tour.update();

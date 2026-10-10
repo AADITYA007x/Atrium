@@ -190,40 +190,53 @@ export function buildConduction({ meshById, valveSet, clipPlane }) {
   add('bundle_branches', [hisEnd, septum.clone().addScaledVector(side, -0.09), nearApex.clone().addScaledVector(side, -0.12)], 'bb0', 'bb1');
 
   // Purkinje fibres: from near the apex, fanning up the inside of both ventricles
+  // Purkinje fibres: from the bundle branch near the apex, a fine net climbing the inside of each
+  // ventricle wall. Each fibre follows the inner surface up one side of the chamber, with short twigs.
   const fan = (meshId, count, offset) => {
-    const pts = surfacePoints(meshById.get(meshId), (p) => {
-      const h = hOf(p);
-      return h > 0.55 && h < 0.75;
-    });
-    const centre = boxCentre(meshById.get(meshId));
+    const mesh = meshById.get(meshId);
+    const centre = boxCentre(mesh);
     const e1 = side.clone();
     const e2 = new THREE.Vector3().crossVectors(axis, e1);
+    const info = surfacePoints(mesh, () => true).map((p) => {
+      const r = p.clone().sub(centre);
+      r.sub(axis.clone().multiplyScalar(r.dot(axis)));
+      return { p, h: hOf(p), ang: Math.atan2(r.dot(e2), r.dot(e1)), rad: r.length() };
+    });
+    const angDiff = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+    // The point on the inner wall at a given height and angle (the inner wall is the one nearest the middle)
+    const wallPoint = (h, ang) => {
+      const near = info.filter((q) => Math.abs(q.h - h) < 0.045 && angDiff(q.ang, ang) < 0.22);
+      if (near.length < 3) return null;
+      // Average the few points nearest the middle: a steady spot on the inner wall
+      near.sort((x, y) => x.rad - y.rad);
+      const pick = near.slice(0, 4);
+      const p = pick.reduce((acc, q) => acc.add(q.p), new THREE.Vector3()).divideScalar(pick.length);
+      const hh = pick.reduce((acc, q) => acc + q.h, 0) / pick.length;
+      const axisPoint = apex.clone().addScaledVector(axis, hh * len);
+      return p.lerp(axisPoint, 0.06);
+    };
+    const startSide = meshId === 'left_ventricle' ? 0.12 : -0.12;
+    const bands = [0.2, 0.32, 0.44, 0.56, 0.68];
     for (let k = 0; k < count; k++) {
       const ang = (k / count) * Math.PI * 2 + offset;
-      const dir = e1.clone().multiplyScalar(Math.cos(ang)).addScaledVector(e2, Math.sin(ang));
-      let best = null;
-      let bestScore = -Infinity;
-      for (const p of pts) {
-        const r = p.clone().sub(centre);
-        r.sub(axis.clone().multiplyScalar(r.dot(axis)));
-        const score = r.normalize().dot(dir);
-        if (score > bestScore) {
-          bestScore = score;
-          best = p;
-        }
+      const start = nearApex.clone().addScaledVector(side, startSide).addScaledVector(axis, 0.03 * (k % 3));
+      const climb = [start];
+      for (const h of bands) {
+        const q = wallPoint(h, ang);
+        if (q) climb.push(q);
       }
-      if (!best) continue;
-      // Pull slightly inward so the fibres sit under the inner lining
-      const inner = best.clone().lerp(centre, 0.18);
-      const startSide = meshId === 'left_ventricle' ? 0.12 : -0.12;
-      // Fibres leave the bundle branch at slightly different heights, not from one point
-      const start = nearApex.clone().addScaledVector(side, startSide).addScaledVector(axis, 0.04 + 0.1 * (k / count));
-      const mid = start.clone().lerp(inner, 0.5).lerp(apex, 0.2);
-      add('purkinje_fibres', [start, mid, inner], 'pk0', 'pk1');
+      if (climb.length < 3) continue;
+      add('purkinje_fibres', climb, 'pk0', 'pk1');
+      // Twigs: short side branches that make the fibres read as a net rather than a brush
+      for (let i = 2; i < climb.length; i += 2) {
+        const h = bands[Math.min(i - 1, bands.length - 1)] + 0.06;
+        const twig = wallPoint(h, ang + (i % 4 === 0 ? 0.32 : -0.32));
+        if (twig) add('purkinje_fibres', [climb[i], climb[i].clone().lerp(twig, 0.5), twig], 'pk0', 'pk1');
+      }
     }
   };
-  fan('left_ventricle', 9, 0.2);
-  fan('right_ventricle', 6, 0.5);
+  fan('left_ventricle', 10, 0.2);
+  fan('right_ventricle', 7, 0.5);
 
   // Build one LineSegments per part
   const groups = {};
